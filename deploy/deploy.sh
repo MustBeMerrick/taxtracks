@@ -32,6 +32,10 @@ cmd_init() {
 
 cmd_deploy() {
   cd "$REPO_ROOT"
+  if ! ssh "$HOST" "test -f ~/$ROOT/env"; then
+    echo "no ~/$ROOT/env on $HOST -- run '$0 init' and fill in the env file first" >&2
+    exit 1
+  fi
   if ! git diff-index --quiet HEAD --; then
     echo "warning: uncommitted changes -- deploying committed HEAD only" >&2
   fi
