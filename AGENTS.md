@@ -59,7 +59,7 @@ Edit the SVG, then `npm run icons`. Don't hand-redraw it.
 ## Commands
 
 ```
-npm run dev        # localhost:3004, auth skipped
+npm run dev        # localhost:3005, auth skipped
 npm test
 npm run typecheck
 npm run lint

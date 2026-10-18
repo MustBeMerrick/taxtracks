@@ -1,7 +1,7 @@
 # Deploying to the gmktec home server
 
 Tax Tracks runs as a Docker container on the gmktec (Ubuntu Server) alongside
-the other apps, on port **3004** bound to loopback. The SQLite database lives on
+the other apps, on port **3005** bound to loopback (3000–3004 are taken; 3004 is sns-equity-simulator). The SQLite database lives on
 the server's disk, *outside* the container, so deploys never touch data.
 Everything is driven from the Mac via `deploy/deploy.sh`, the same as
 option-pilot-app and money-motion-app.
@@ -30,16 +30,28 @@ option-pilot-app and money-motion-app.
 
 ## Access
 
-The container publishes `127.0.0.1:3004` only — not reachable from the LAN or the router.
+The container publishes `127.0.0.1:3005` only — not reachable from the LAN or the router.
 
 - **Public (HTTPS)**: `https://taxtracks.mustbemerrick.com` via the existing Cloudflare
-  Tunnel (`cloudflared` on gmktec). Add a public hostname to the tunnel pointing at
-  `http://localhost:3004` (Cloudflare dashboard → Zero Trust → Networks → Tunnels →
-  the gmktec tunnel → Public Hostname, or the tunnel's `config.yml` ingress if it's
-  locally managed). App-level auth is what makes this safe to expose.
+  Tunnel. App-level auth is what makes this safe to expose. The tunnel is
+  **locally managed**: `cloudflared` runs as a systemd service reading
+  `/etc/cloudflared/config.yml` (`~/.cloudflared/config.yml` is an older copy the
+  service doesn't use). Deploy the app first, then on gmktec:
+
+  1. Add an ingress rule to `/etc/cloudflared/config.yml`, **above** the final
+     `http_status:404` catch-all:
+     ```yaml
+       - hostname: taxtracks.mustbemerrick.com
+         service: http://localhost:3005
+     ```
+  2. Check it: `cloudflared tunnel ingress validate --config /etc/cloudflared/config.yml`
+     and `cloudflared tunnel ingress rule --config /etc/cloudflared/config.yml https://taxtracks.mustbemerrick.com`
+  3. Create the DNS record (uses `~/.cloudflared/cert.pem`):
+     `cloudflared tunnel route dns 54baf9ca-8094-4191-b368-87595616f89d taxtracks.mustbemerrick.com`
+  4. `sudo systemctl restart cloudflared`
 - **Tailnet (HTTPS)**: on gmktec run
-  `tailscale serve --bg --https=8445 http://127.0.0.1:3004`
-  → `https://gmktec.<tailnet>.ts.net:8445`. (443, 8443 and 8444 are taken by the other apps.)
+  `sudo tailscale serve --bg --https=8445 http://127.0.0.1:3005`
+  → `https://gmktec.tailaedcf6.ts.net:8445`. (443, 8443 and 8444 are taken by the other apps.)
   Passkeys are bound to `APP_URL`'s hostname, so use the password on this address.
 
 Session cookies are `Secure`, so sign-in only works over HTTPS (both paths above are).
@@ -57,7 +69,7 @@ Local `npm run dev` skips auth entirely.
 | `deploy/deploy.sh restart` / `stop` | Recreate (picks up env changes) / stop the container |
 
 Overrides: `DEPLOY_HOST` (default `gmktec`), `DEPLOY_ROOT` (default `apps/taxtracks`),
-`TT_PORT` on the server (default 3004).
+`TT_PORT` on the server (default 3005).
 
 ## How a deploy works
 

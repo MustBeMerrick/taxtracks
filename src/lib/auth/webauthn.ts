@@ -4,7 +4,7 @@ import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 
 // Passkeys are bound to the hostname in APP_URL (deploy/env), e.g. taxtracks.mustbemerrick.com.
 // Other origins (Tailscale, LAN) still work with the password.
-const APP_URL = new URL(process.env.APP_URL ?? "http://localhost:3004");
+const APP_URL = new URL(process.env.APP_URL ?? "http://localhost:3005");
 export const RP_ID = APP_URL.hostname;
 export const RP_NAME = "Tax Tracks";
 export const ORIGIN = APP_URL.origin;
