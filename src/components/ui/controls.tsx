@@ -1,6 +1,8 @@
+'use client'
+
 import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
-import './controls.css'
+import '@/components/ui/controls.css'
 
 interface SelectProps<T extends string | number> {
   label: string

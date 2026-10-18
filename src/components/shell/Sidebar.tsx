@@ -1,9 +1,12 @@
-import { NavLink } from 'react-router'
-import { useAppState } from '../../app/AppStateProvider'
-import { FILING_STATUS_LABELS, type FilingStatus } from '../../app/filingStatus'
-import { NAV_ITEMS } from '../../app/nav'
-import { Logo, Mark } from '../../brand/Logo'
-import { Segmented, Select } from '../ui/controls'
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useAppState } from '@/components/app/AppStateProvider'
+import { FILING_STATUS_LABELS, type FilingStatus } from '@/lib/core/filing-status'
+import { NAV_ITEMS, navItemFor } from '@/components/app/nav'
+import { Logo, Mark } from '@/components/brand/Logo'
+import { Segmented, Select } from '@/components/ui/controls'
 
 export function Sidebar() {
   const app = useAppState()
@@ -61,12 +64,13 @@ export function Sidebar() {
 }
 
 function SidebarLink({ path, label, icon: Icon }: (typeof NAV_ITEMS)[number]) {
+  const active = navItemFor(usePathname())?.path === path
   return (
     <li>
-      <NavLink to={path} end={path === '/'} className="tt-nav-link" title={label}>
+      <Link href={path} className={`tt-nav-link${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} title={label}>
         <Icon size={20} aria-hidden="true" />
         <span className="tt-nav-label">{label}</span>
-      </NavLink>
+      </Link>
     </li>
   )
 }

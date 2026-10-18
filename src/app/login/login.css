@@ -1,0 +1,73 @@
+.tt-login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.tt-login-card {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.tt-login-card > .tt-logo {
+  margin-bottom: var(--space-4);
+}
+
+.tt-login-error {
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--negative) 14%, transparent);
+  font-size: 13px;
+}
+
+.tt-login-primary,
+.tt-login-form,
+.tt-login-form .tt-button {
+  justify-self: stretch;
+  width: 100%;
+  justify-content: center;
+}
+
+.tt-login-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tt-login-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+}
+
+.tt-login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.tt-login-divider::before,
+.tt-login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}

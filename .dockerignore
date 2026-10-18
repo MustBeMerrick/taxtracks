@@ -1,0 +1,14 @@
+.git
+node_modules
+.next
+data
+docs
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*
+tsconfig.tsbuildinfo
+*.log
+.DS_Store
+env

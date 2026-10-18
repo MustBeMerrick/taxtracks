@@ -1,7 +1,7 @@
 import { Info } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { Provenance } from '../../domain/types'
-import './card.css'
+import type { Provenance } from '@/lib/core/types'
+import '@/components/ui/card.css'
 
 interface CardProps {
   title?: ReactNode

@@ -1,7 +1,9 @@
+'use client'
+
 import { Monitor, Moon, Sun } from 'lucide-react'
-import { IconButton } from '../ui/controls'
-import { useTheme } from '../../theme/ThemeProvider'
-import type { ThemePreference } from '../../theme/theme'
+import { IconButton } from '@/components/ui/controls'
+import { useTheme } from '@/components/app/ThemeProvider'
+import type { ThemePreference } from '@/components/app/theme'
 
 const NEXT: Record<ThemePreference, ThemePreference> = { system: 'light', light: 'dark', dark: 'system' }
 const ICONS = { system: Monitor, light: Sun, dark: Moon }

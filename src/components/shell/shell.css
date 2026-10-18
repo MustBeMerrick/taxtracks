@@ -167,6 +167,28 @@
   white-space: nowrap;
 }
 
+.tt-stale {
+  color: var(--warning);
+  font-weight: 500;
+}
+
+/* Dot on the Recalculate button when results are out of date. */
+.tt-button--stale {
+  position: relative;
+}
+
+.tt-button--stale::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 2px var(--app-bg);
+}
+
 .tt-spin {
   animation: tt-spin 0.8s linear infinite;
 }

@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Next.js
+.next
+next-env.d.ts
+*.tsbuildinfo
+
+# Local SQLite database and server env (never commit tax data or secrets)
+data/
+.env*
+!.env.example

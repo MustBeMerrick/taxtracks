@@ -1,22 +1,20 @@
+'use client'
+
 import { RefreshCw, Settings } from 'lucide-react'
-import { useEffect } from 'react'
-import { Link, useLocation } from 'react-router'
-import { useAppState } from '../../app/AppStateProvider'
-import { FILING_STATUS_LABELS } from '../../app/filingStatus'
-import { pageTitleFor } from '../../app/nav'
-import { Mark } from '../../brand/Logo'
-import { Select } from '../ui/controls'
-import { ThemeToggle } from './ThemeToggle'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useAppState } from '@/components/app/AppStateProvider'
+import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
+import { pageTitleFor } from '@/components/app/nav'
+import { Mark } from '@/components/brand/Logo'
+import { Select } from '@/components/ui/controls'
+import { ThemeToggle } from '@/components/shell/ThemeToggle'
 
 const timestamp = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 
 export function TopBar() {
   const app = useAppState()
-  const { pathname } = useLocation()
-  const title = pageTitleFor(pathname)
-  useEffect(() => {
-    document.title = title === 'Tax Tracks' ? title : `${title} · Tax Tracks`
-  }, [title])
+  const title = pageTitleFor(usePathname())
   const scopeOptions = [
     { value: 'household', label: 'Household' },
     ...app.taxpayers.map((t) => ({ value: t.id, label: t.name })),
@@ -50,18 +48,30 @@ export function TopBar() {
 
         <div className="tt-recalc">
           <span className="tt-recalc-time">
-            Last updated
-            <br />
-            <span className="num">{app.lastCalculatedAt ? timestamp.format(app.lastCalculatedAt) : 'Not yet calculated'}</span>
+            {app.lastCalculatedAt ? 'Last calculated' : 'Not yet calculated'}
+            {app.lastCalculatedAt && (
+              <>
+                <br />
+                <span className="num">{timestamp.format(app.lastCalculatedAt)}</span>
+              </>
+            )}
+            {app.lastCalculatedAt && app.isStale && <span className="tt-stale"> · Data changed</span>}
           </span>
-          <button type="button" className="tt-button" onClick={app.recalculate} disabled={app.isRecalculating}>
+          <button
+            type="button"
+            className={`tt-button${app.isStale ? ' tt-button--stale' : ''}`}
+            onClick={app.recalculate}
+            disabled={app.isRecalculating}
+            title={app.isStale ? 'Data changed since the last calculation' : 'Results are up to date'}
+          >
             <RefreshCw size={16} className={app.isRecalculating ? 'tt-spin' : undefined} aria-hidden="true" />
             <span className="tt-recalc-label">Recalculate</span>
+            {app.isStale && <span className="visually-hidden"> (data changed since last calculation)</span>}
           </button>
         </div>
 
         <ThemeToggle />
-        <Link to="/settings" className="tt-icon-button" aria-label="Settings" title="Settings">
+        <Link href="/settings" className="tt-icon-button" aria-label="Settings" title="Settings">
           <Settings size={18} />
         </Link>
       </div>

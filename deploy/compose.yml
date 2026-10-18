@@ -1,0 +1,29 @@
+# Run from the server: ~/apps/taxtracks/src/deploy/compose.yml
+# Paths below are relative to this file: ../../data and ../../env live
+# alongside src/ in ~/apps/taxtracks/, outside the deployed tree.
+name: taxtracks
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: taxtracks
+    # run as marc (uid 1000), not root: files created on the data mount stay owned by marc
+    user: "1000:1000"
+    restart: unless-stopped
+    ports:
+      # Loopback only: cloudflared and Tailscale Serve run on this host and reach
+      # the app via localhost. (3000 net-worth, 3001 mae-net-worth, 3002 option-pilot,
+      # 3003 money-motion)
+      - "127.0.0.1:${TT_PORT:-3004}:3000"
+    env_file:
+      - ../../env
+    volumes:
+      - ../../data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

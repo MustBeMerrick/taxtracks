@@ -1,10 +1,10 @@
-import { Outlet } from 'react-router'
-import { BottomNav } from './BottomNav'
-import { Sidebar } from './Sidebar'
-import { TopBar } from './TopBar'
-import './shell.css'
+import type { ReactNode } from 'react'
+import { BottomNav } from '@/components/shell/BottomNav'
+import { Sidebar } from '@/components/shell/Sidebar'
+import { TopBar } from '@/components/shell/TopBar'
+import '@/components/shell/shell.css'
 
-export function AppShell() {
+export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="tt-shell">
       <a href="#main" className="tt-skip-link">
@@ -14,7 +14,7 @@ export function AppShell() {
       <div className="tt-main-column">
         <TopBar />
         <main id="main" className="tt-main">
-          <Outlet />
+          {children}
         </main>
       </div>
       <BottomNav />
