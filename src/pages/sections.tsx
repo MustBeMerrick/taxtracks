@@ -2,20 +2,6 @@ import { Placeholder } from './Placeholder'
 
 // Section stubs. Each is replaced by a real page as it's built.
 
-export function Overview() {
-  return (
-    <Placeholder
-      purpose="Immediate view of the household's year-end tax position, its drivers, and whether withholding is on track."
-      planned={[
-        'KPI row: projected refund/due, total liability, total payments, total income, effective rates',
-        'Tax liability vs. payments chart with actual/projected cutoff and year-end forecast',
-        'Income composition, Federal vs. California, investment P/L, withholding progress',
-        'Paycheck summary and recent activity & next steps',
-      ]}
-    />
-  )
-}
-
 export function Income() {
   return (
     <Placeholder
@@ -58,15 +44,17 @@ export function TaxEngine() {
   )
 }
 
-export function Scenarios() {
+export function Calculators() {
   return (
     <Placeholder
-      purpose="Explore financial choices without changing the baseline forecast."
+      purpose="Work out withholding changes before submitting a new W-4 or DE-4, using your actual paychecks and projected liability."
       planned={[
-        'Create a scenario from the current baseline',
-        'Override salary, bonus, equity sales, withholding, estimated payments, contributions',
-        'Side-by-side baseline vs. scenario with deltas and change trace',
-        'Save, duplicate, rename and discard named scenarios',
+        'Federal W-4: per-paycheck withholding via IRS Pub 15-T for the tax year and pay frequency, with each step shown',
+        'California DE-4: Method B withholding with allowances and additional amount',
+        'Extra withholding per remaining paycheck needed to reach a target refund or zero balance due',
+        'Bonus / supplemental pay withholding (flat-rate vs. aggregate)',
+        'Estimated tax payment amounts and safe-harbor check',
+        'Compare expected vs. actual withholding on recorded paychecks',
       ]}
     />
   )

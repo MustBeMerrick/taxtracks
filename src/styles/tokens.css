@@ -53,12 +53,17 @@
   --logo-ink: var(--brand-off-white);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25);
 
-  /* Stable chart series palette; not tied to specific entities. */
-  --series-1: #2dd4bf;
-  --series-2: #818cf8;
-  --series-3: #fbbf24;
-  --series-4: #c084fc;
-  --series-5: #94a3b8;
+  /*
+   * Categorical chart series, assigned in fixed order and never tied to
+   * Federal/CA or a taxpayer. Validated (dataviz validate_palette.js) against
+   * --surface for lightness band, chroma, CVD and contrast. --series-other is
+   * the deliberately neutral "Other" slot.
+   */
+  --series-1: #12a594;
+  --series-2: #7076f2;
+  --series-3: #c08410;
+  --series-4: #a35ee8;
+  --series-other: #87929e;
 }
 
 :root[data-theme='light'] {
@@ -83,9 +88,9 @@
   --logo-ink: var(--brand-graphite);
   --shadow-card: 0 1px 3px rgb(15 27 32 / 0.06);
 
-  --series-1: #14b8a6;
+  --series-1: #0e9e8f;
   --series-2: #4f7cf3;
-  --series-3: #f59e0b;
+  --series-3: #d97706;
   --series-4: #a855f7;
-  --series-5: #94a3b8;
+  --series-other: #94a3b8;
 }

@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   ReceiptText,
   Settings,
-  SlidersHorizontal,
+  Sigma,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -26,8 +26,8 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Overview', shortLabel: 'Overview', title: 'Tax Overview', icon: LayoutDashboard, primaryOnMobile: true },
   { path: '/income', label: 'Income & Investments', shortLabel: 'Income', title: 'Income & Investments', icon: ChartLine, primaryOnMobile: true },
   { path: '/payroll', label: 'Payroll & Withholding', shortLabel: 'Payroll', title: 'Payroll & Withholding', icon: ReceiptText, primaryOnMobile: true },
-  { path: '/tax-engine', label: 'Tax Engine', shortLabel: 'Engine', title: 'Tax Engine', icon: Calculator, primaryOnMobile: true },
-  { path: '/scenarios', label: 'Scenarios', shortLabel: 'Scenarios', title: 'Scenarios', icon: SlidersHorizontal, primaryOnMobile: false },
+  { path: '/tax-engine', label: 'Tax Engine', shortLabel: 'Engine', title: 'Tax Engine', icon: Sigma, primaryOnMobile: true },
+  { path: '/calculators', label: 'Calculators', shortLabel: 'Calculators', title: 'Withholding Calculators', icon: Calculator, primaryOnMobile: false },
   { path: '/reports', label: 'Reports', shortLabel: 'Reports', title: 'Reports', icon: ChartColumn, primaryOnMobile: false },
   { path: '/settings', label: 'Settings & Tax Data', shortLabel: 'Settings', title: 'Settings & Tax Data', icon: Settings, primaryOnMobile: false, footer: true },
 ]
