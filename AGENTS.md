@@ -6,6 +6,70 @@ Jointly, federal + California). The product spec lives outside the repo
 noted below. Sibling apps (`option-pilot-app`, `money-motion-app`) set the house
 pattern — check them before inventing a new convention.
 
+## Status (as of 2026-10-17)
+
+The boilerplate is complete and live. Built in four phases, each reviewed by Marc:
+
+| Phase | What | State |
+|---|---|---|
+| 1 | Scaffold, design tokens, light/dark/system theme, vector logo + icons | Done |
+| 2 | Responsive shell: sidebar ≥1100px, icon rail 768–1099px, iPhone top bar + tab bar | Done |
+| 3 | Overview dashboard (KPIs, liability vs. payments, income, Fed vs. CA, investments, withholding, paychecks, activity) | Done, on **sample data** |
+| 4 | Data layer, auth, deploy — moved from a Vite PWA + IndexedDB to this Next.js + server SQLite stack | Done |
+
+**Deployed:** gmktec, container healthy on `127.0.0.1:3005`, public at
+`https://taxtracks.mustbemerrick.com` via the Cloudflare Tunnel. Marc has signed in
+with the password. Not yet done on the server: passkeys registered, sample
+data cleared.
+
+**Placeholders:** Income, Payroll, Tax Engine, Calculators and Reports are stub
+pages listing what's planned (`src/components/pages/sections.tsx`). Liabilities are
+hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engine output.
+
+## Next up — where to pick up
+
+1. **Payroll & Withholding** (recommended first; everything else feeds off paychecks).
+   One page, three tabs (segmented control on iPhone); the withholding calculators
+   live here, not on their own page:
+   - **Paychecks:** ledger with add/edit/delete via server actions, actual vs.
+     projected, projected paychecks generated from pay schedule + current
+     elections, YTD and full-year totals by person.
+   - **Elections:** saved W-4 / DE-4 elections, versioned by effective date;
+     history never changes.
+   - **Simulator:** sliders/fields for extra withholding per paycheck, W-4 / DE-4
+     changes (Pub 15-T, DE-4 Method B), bonus/supplemental withholding and
+     estimated tax payments (+ safe harbor). Live effect on remaining paychecks,
+     year-end refund/due and take-home. **Never writes until "Apply as new election
+     from [date]"**, which saves a new dated election.
+
+   Also remove the `/calculators` route and its nav item (`src/components/app/nav.ts`,
+   `Calculators` in `src/components/pages/sections.tsx`). Marc will send redacted
+   pay-stub layouts (deduction names, pay frequency, bonus/RSU handling) — ask for
+   them if they're not in the conversation; they decide the `PayrollRecord` line items.
+2. **Income & Investments:** per-source summaries and transaction ledger, ST/LT
+   netting, dividends (qualified vs. ordinary), estimated vs. confirmed.
+3. **Tax Engine:** 2026 federal + California, tax-year-versioned rule sets, traceable
+   calculation tree; replaces the placeholder liabilities and feeds Recalculate.
+4. **Reports** (optional, P2).
+
+The Simulator's federal/CA year-end numbers need the Tax Engine; until it exists,
+drive them from the placeholder liabilities and label them as estimates.
+
+Small open items:
+- Fail fast at startup when `AUTH_SESSION_SECRET` / `AUTH_PASSWORD_HASH` is empty
+  (a blank secret currently surfaces only as a login error).
+- `selectTaxYear` exists but there's no UI to add a new tax year.
+
+## Working with Marc
+
+- Plan work as phases and **stop after each for review** before continuing.
+- Commit only when asked. Commit body = short `-- ` bullets, one line each, ~6 max;
+  never add a Co-Authored-By trailer.
+- Don't drive a browser (Claude in Chrome) unless Marc asks. Verify with typecheck, lint,
+  tests, build and curl; for visual checks, tell Marc what to look at (desktop, ~900px,
+  390px iPhone width; light and dark).
+- Use sample data or redacted layouts; don't ask for real tax figures in chat.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · plain CSS with design tokens ·
@@ -52,8 +116,9 @@ Edit the SVG, then `npm run icons`. Don't hand-redraw it.
 
 ## Agreed deviations from the spec
 
-- Scenarios (§4.5) is replaced by **Calculators** (`/calculators`): W-4 / Pub 15-T,
-  DE-4, extra withholding per paycheck, bonus, estimated payments.
+- Scenarios (§4.5) is dropped. Its what-if role becomes the **Simulator tab in Payroll &
+  Withholding** (W-4 / Pub 15-T, DE-4, extra withholding per paycheck, bonus, estimated
+  payments). A standalone Calculators page was tried first and is being folded in.
 - No offline mode or service worker; the data lives on the server.
 
 ## Commands
