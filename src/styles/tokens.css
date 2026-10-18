@@ -1,0 +1,91 @@
+/*
+ * Tax Tracks design tokens (spec §2.2–2.4).
+ * Brand colours are for the mark; UI colours drive the interface.
+ * Theme is chosen by [data-theme] on <html>, set from the user's
+ * Light / Dark / System preference (see src/theme).
+ */
+
+:root {
+  --brand-teal: #14d8c4;
+  --brand-teal-deep: #0e9e8f;
+  --brand-graphite: #0f1b20;
+  --brand-slate: #475569;
+  --brand-off-white: #f8fafc;
+
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --sidebar-width: 248px;
+}
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #181b20;
+  --sidebar-bg: #141a1f;
+  --surface: #252a30;
+  --surface-raised: #2d343b;
+  --surface-inset: #1c2026;
+  --border: #394148;
+  --text-primary: #f8fafc;
+  --text-secondary: #aab4bf;
+  --text-muted: #87929e;
+  --accent: #2dd4bf;
+  --accent-hover: #14d8c4;
+  --accent-soft: #153b39;
+  --accent-contrast: #0f1b20;
+  --chart-secondary: #818cf8;
+  --positive: #2dd4bf;
+  --negative: #f87171;
+  --warning: #fbbf24;
+  --logo-ink: var(--brand-off-white);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25);
+
+  /* Stable chart series palette; not tied to specific entities. */
+  --series-1: #2dd4bf;
+  --series-2: #818cf8;
+  --series-3: #fbbf24;
+  --series-4: #c084fc;
+  --series-5: #94a3b8;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --app-bg: #f4f7f9;
+  --sidebar-bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #f8fafc;
+  --surface-inset: #f1f5f9;
+  --border: #dce5ea;
+  --text-primary: #172033;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --accent: #0e9e8f;
+  --accent-hover: #087d72;
+  --accent-soft: #d9f7f2;
+  --accent-contrast: #ffffff;
+  --chart-secondary: #4f7cf3;
+  --positive: #07866f;
+  --negative: #dc2626;
+  --warning: #b45309;
+  --logo-ink: var(--brand-graphite);
+  --shadow-card: 0 1px 3px rgb(15 27 32 / 0.06);
+
+  --series-1: #14b8a6;
+  --series-2: #4f7cf3;
+  --series-3: #f59e0b;
+  --series-4: #a855f7;
+  --series-5: #94a3b8;
+}

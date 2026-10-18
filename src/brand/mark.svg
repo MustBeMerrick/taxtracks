@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="36 4 340 340">
+  <defs>
+    <linearGradient id="tt-track" x1="300" y1="190" x2="40" y2="315" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14D8C4"/>
+      <stop offset="0.45" stop-color="#11BFAE"/>
+      <stop offset="1" stop-color="#0E9E8F" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <g fill="currentColor">
+    <path d="M98 34H366L352 57H111Z"/>
+    <path d="M119 71H205V217L182 227V93H119Z"/>
+    <path d="M220 71H241V156L220 152Z"/>
+    <path d="M220 171L241 178V200L220 210Z"/>
+    <path d="M257 71H344V93H278V167L257 157Z"/>
+  </g>
+  <path fill="url(#tt-track)" d="M224 158C245 165 270 178 270 196C270 208 255 215 236 222C180 246 100 286 40 315H190C240 292 285 256 306 230C320 212 318 192 300 182C280 170 250 160 224 158Z"/>
+</svg>
