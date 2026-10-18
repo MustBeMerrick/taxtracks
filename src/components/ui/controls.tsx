@@ -1,7 +1,6 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
-import type { ReactNode } from 'react'
 import '@/components/ui/controls.css'
 
 interface SelectProps<T extends string | number> {
@@ -61,19 +60,5 @@ export function Segmented<T extends string>({ label, value, options, onChange, c
         </button>
       ))}
     </div>
-  )
-}
-
-interface IconButtonProps {
-  label: string
-  onClick?: () => void
-  children: ReactNode
-}
-
-export function IconButton({ label, onClick, children }: IconButtonProps) {
-  return (
-    <button type="button" className="tt-icon-button" aria-label={label} title={label} onClick={onClick}>
-      {children}
-    </button>
   )
 }

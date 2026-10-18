@@ -6,6 +6,15 @@ the server's disk, *outside* the container, so deploys never touch data.
 Everything is driven from the Mac via `deploy/deploy.sh`, the same as
 option-pilot-app and money-motion-app.
 
+## Current deployment (2026-10-17)
+
+- `init` + `deploy` done; container healthy on `127.0.0.1:3005`.
+- Env set: `APP_URL`, `AUTH_SESSION_SECRET`, `AUTH_PASSWORD_HASH`.
+- Cloudflare Tunnel ingress added; `https://taxtracks.mustbemerrick.com` serves the app.
+- Password sign-in works.
+- Still to do: register passkeys, clear the sample data
+  (Settings › Data) before entering real numbers.
+
 ## Server layout
 
 ```
@@ -49,12 +58,8 @@ The container publishes `127.0.0.1:3005` only — not reachable from the LAN or 
   3. Create the DNS record (uses `~/.cloudflared/cert.pem`):
      `cloudflared tunnel route dns 54baf9ca-8094-4191-b368-87595616f89d taxtracks.mustbemerrick.com`
   4. `sudo systemctl restart cloudflared`
-- **Tailnet (HTTPS)**: on gmktec run
-  `sudo tailscale serve --bg --https=8445 http://127.0.0.1:3005`
-  → `https://gmktec.tailaedcf6.ts.net:8445`. (443, 8443 and 8444 are taken by the other apps.)
-  Passkeys are bound to `APP_URL`'s hostname, so use the password on this address.
 
-Session cookies are `Secure`, so sign-in only works over HTTPS (both paths above are).
+Session cookies are `Secure`, so sign-in only works over HTTPS (the tunnel URL).
 Local `npm run dev` skips auth entirely.
 
 ## Everyday commands

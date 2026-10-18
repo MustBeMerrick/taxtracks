@@ -13,7 +13,7 @@ services:
     user: "1000:1000"
     restart: unless-stopped
     ports:
-      # Loopback only: cloudflared and Tailscale Serve run on this host and reach
+      # Loopback only: cloudflared runs on this host and reaches
       # the app via localhost. (3000 net-worth, 3001 mae-net-worth, 3002 option-pilot,
       # 3003 money-motion, 3004 sns-equity-simulator)
       - "127.0.0.1:${TT_PORT:-3005}:3000"

@@ -67,24 +67,6 @@
   color: var(--text-primary);
 }
 
-.tt-icon-button {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.tt-icon-button:hover {
-  background: var(--surface-raised);
-  color: var(--text-primary);
-}
-
 .tt-button {
   display: inline-flex;
   align-items: center;
@@ -119,10 +101,5 @@
 
   .tt-segmented button {
     min-height: 40px;
-  }
-
-  .tt-icon-button {
-    width: 44px;
-    height: 44px;
   }
 }

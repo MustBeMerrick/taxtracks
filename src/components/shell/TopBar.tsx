@@ -1,14 +1,12 @@
 'use client'
 
-import { RefreshCw, Settings } from 'lucide-react'
-import Link from 'next/link'
+import { RefreshCw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useAppState } from '@/components/app/AppStateProvider'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { pageTitleFor } from '@/components/app/nav'
 import { Mark } from '@/components/brand/Logo'
 import { Select } from '@/components/ui/controls'
-import { ThemeToggle } from '@/components/shell/ThemeToggle'
 
 const timestamp = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -70,10 +68,6 @@ export function TopBar() {
           </button>
         </div>
 
-        <ThemeToggle />
-        <Link href="/settings" className="tt-icon-button" aria-label="Settings" title="Settings">
-          <Settings size={18} />
-        </Link>
       </div>
     </header>
   )

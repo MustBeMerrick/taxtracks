@@ -306,8 +306,7 @@
     width: auto;
   }
 
-  .tt-recalc-label,
-  .tt-topbar-actions > a[aria-label='Settings'] {
+  .tt-recalc-label {
     display: none;
   }
 
