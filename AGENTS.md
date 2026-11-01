@@ -42,8 +42,8 @@ hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engi
      year-end refund/due and take-home. **Never writes until "Apply as new election
      from [date]"**, which saves a new dated election.
 
-   Also remove the `/calculators` route and its nav item (`src/components/app/nav.ts`,
-   `Calculators` in `src/components/pages/sections.tsx`). Marc will send redacted
+   **Update 2026-11-01:** the Calculators page is staying (Marc reversed the fold-in). Build the
+   calculators there; the Payroll Simulator tab becomes a thin "apply as election" layer later. Marc will send redacted
    pay-stub layouts (deduction names, pay frequency, bonus/RSU handling) — ask for
    them if they're not in the conversation; they decide the `PayrollRecord` line items.
 2. **Income & Investments:** per-source summaries and transaction ledger, ST/LT
@@ -116,9 +116,12 @@ Edit the SVG, then `npm run icons`. Don't hand-redraw it.
 
 ## Agreed deviations from the spec
 
-- Scenarios (§4.5) is dropped. Its what-if role becomes the **Simulator tab in Payroll &
-  Withholding** (W-4 / Pub 15-T, DE-4, extra withholding per paycheck, bonus, estimated
-  payments). A standalone Calculators page was tried first and is being folded in.
+- Scenarios (§4.5) is dropped. Its what-if role is the **Calculators page** (W-4 / Pub 15-T,
+  DE-4, extra withholding per paycheck, bonus, estimated payments). It was briefly planned
+  as a Payroll Simulator tab; Marc reversed that on 2026-11-01 — keep `/calculators`.
+  First calculator: salary paycheck (ADP-style tabs: Earnings, Federal, State, Benefits).
+  Pure logic is `src/lib/core/withholding/` (rules per tax year, generated tables from the
+  IRS/EDD PDFs, tested against a real pay stub).
 - No offline mode or service worker; the data lives on the server.
 
 ## Commands

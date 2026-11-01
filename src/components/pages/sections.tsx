@@ -44,22 +44,6 @@ export function TaxEngine() {
   )
 }
 
-export function Calculators() {
-  return (
-    <Placeholder
-      purpose="Work out withholding changes before submitting a new W-4 or DE-4, using your actual paychecks and projected liability."
-      planned={[
-        'Federal W-4: per-paycheck withholding via IRS Pub 15-T for the tax year and pay frequency, with each step shown',
-        'California DE-4: Method B withholding with allowances and additional amount',
-        'Extra withholding per remaining paycheck needed to reach a target refund or zero balance due',
-        'Bonus / supplemental pay withholding (flat-rate vs. aggregate)',
-        'Estimated tax payment amounts and safe-harbor check',
-        'Compare expected vs. actual withholding on recorded paychecks',
-      ]}
-    />
-  )
-}
-
 export function Reports() {
   return (
     <Placeholder

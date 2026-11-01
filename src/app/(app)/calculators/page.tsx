@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import { Calculators } from '@/components/pages/sections'
+import { SalaryPaycheckCalculator } from '@/components/calculators/SalaryPaycheckCalculator'
 
 export const metadata: Metadata = { title: 'Withholding Calculators' }
 
 export default function Page() {
-  return <Calculators />
+  return <SalaryPaycheckCalculator today={new Date().toISOString().slice(0, 10)} />
 }
