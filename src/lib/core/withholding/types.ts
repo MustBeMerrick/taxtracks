@@ -82,6 +82,15 @@ export interface WithholdingRules {
     step1gAllowance: { mfj: number; other: number }
     tables: Record<'standard' | 'step2Checkbox', Record<FedFilingStatus, FedRateRow[]>>
   }
+  /** Annual contribution limits (employee elective deferrals / pre-tax benefits). */
+  limits: {
+    /** 401(k)/403(b) employee deferral, before age-50 catch-up. */
+    retirementDeferral: number
+    healthcareFsa: number
+    dependentCareFsa: number
+    /** Family coverage, before the age-55 catch-up; includes employer contributions. */
+    hsaFamily: number
+  }
   fica: {
     socialSecurityRate: number
     socialSecurityWageBase: number

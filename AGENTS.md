@@ -28,24 +28,20 @@ hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engi
 
 ## Next up — where to pick up
 
-1. **Payroll & Withholding** (recommended first; everything else feeds off paychecks).
-   One page, three tabs (segmented control on iPhone); the withholding calculators
-   live here, not on their own page:
-   - **Paychecks:** ledger with add/edit/delete via server actions, actual vs.
-     projected, projected paychecks generated from pay schedule + current
-     elections, YTD and full-year totals by person.
-   - **Elections:** saved W-4 / DE-4 elections, versioned by effective date;
-     history never changes.
-   - **Simulator:** sliders/fields for extra withholding per paycheck, W-4 / DE-4
-     changes (Pub 15-T, DE-4 Method B), bonus/supplemental withholding and
-     estimated tax payments (+ safe harbor). Live effect on remaining paychecks,
-     year-end refund/due and take-home. **Never writes until "Apply as new election
-     from [date]"**, which saves a new dated election.
-
-   **Update 2026-11-01:** the Calculators page is staying (Marc reversed the fold-in). Build the
-   calculators there; the Payroll Simulator tab becomes a thin "apply as election" layer later. Marc will send redacted
-   pay-stub layouts (deduction names, pay frequency, bonus/RSU handling) — ask for
-   them if they're not in the conversation; they decide the `PayrollRecord` line items.
+1. **Paystubs** (page `/payroll`, formerly "Payroll & Withholding"). Marc's decisions, 2026-11-01:
+   - **Phase 1 (built):** one table per person (Marc, Mae). Each row has a **Paid Out** checkbox
+     = `status: 'actual'` (unchecked = `'projected'`, up in the air). YTD columns count Paid Out rows
+     only. Manual entry (add/edit dialog, line items from the ADP stub). Hard-rule warnings in
+     `src/lib/core/payroll.ts`: Social Security over the annual max, 401(k)/FSA/HSA limits, negative
+     net, duplicate dates, paid-but-future, unpaid-but-past.
+   - **Phase 2 (next):** **Elections** — W-4/DE-4 typed in by Marc from ADP, versioned by effective
+     date, history never changes. A **"Simulate new elections"** button reads the entries on the
+     Calculators page and shows what the not-Paid-Out rows WOULD become (clearly labelled as
+     simulated, with what could change). Optional **commit** applies them to the not-Paid-Out rows
+     (saves a new dated election); if not committed everything reverts. Never write without commit.
+   - **Phase 3:** projected paychecks from the pay schedule + current election; expected vs. actual
+     withholding comparison.
+   - No bonus/RSU stubs yet. Mae's stubs are the same ADP layout.
 2. **Income & Investments:** per-source summaries and transaction ledger, ST/LT
    netting, dividends (qualified vs. ordinary), estimated vs. confirmed.
 3. **Tax Engine:** 2026 federal + California, tax-year-versioned rule sets, traceable

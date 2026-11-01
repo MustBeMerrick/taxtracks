@@ -3,10 +3,11 @@
 import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Card } from '@/components/ui/Card'
+import { handleNumericChange } from '@/components/ui/numeric-input'
 import { Segmented, Select } from '@/components/ui/controls'
 import { formatMoney, formatPercent } from '@/lib/core/money'
 import { calculateSalaryPaycheck } from '@/lib/core/withholding/calculate'
-import { defaultForm, formatDollars, formatNumberInput, formToInput, type FormErrors, type PaycheckForm } from '@/lib/core/withholding/form'
+import { defaultForm, formatDollars, formToInput, type FormErrors, type PaycheckForm } from '@/lib/core/withholding/form'
 import { SUPPORTED_TAX_YEARS, UnsupportedTaxYearError } from '@/lib/core/withholding/rules'
 import {
   PAY_FREQUENCIES,
@@ -174,27 +175,7 @@ function TextField({ form, set, errors, name, label, hint, prefix, suffix, input
           onBlur={() => {
             if (prefix === '$') set(name, formatDollars(form[name] as string) as never)
           }}
-          onChange={(e) => {
-            // Re-group digits as the user types, keeping the caret before the same trailing digits/point
-            // (counting from the end is robust to commas and an auto-added leading zero).
-            const input = e.target
-            const charsAfterCaret = input.value.slice(input.selectionStart ?? input.value.length).replace(/[^\d.]/g, '').length
-            const formatted = formatNumberInput(input.value, prefix === '$' ? 2 : undefined)
-            set(name, formatted as never)
-            requestAnimationFrame(() => {
-              let seen = 0
-              let caret = 0
-              for (let i = formatted.length; i > 0; i--) {
-                if (seen === charsAfterCaret) {
-                  caret = i
-                  break
-                }
-                if (/[\d.]/.test(formatted[i - 1])) seen++
-              }
-              if (charsAfterCaret === 0) caret = formatted.length
-              input.setSelectionRange(caret, caret)
-            })
-          }}
+          onChange={(e) => handleNumericChange(e, (v) => set(name, v as never), prefix === '$' ? 2 : undefined)}
         />
         {suffix && <span aria-hidden="true">{suffix}</span>}
       </div>

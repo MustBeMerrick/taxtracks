@@ -5,6 +5,7 @@ import { requireSession } from '@/lib/auth/session'
 import type { FilingStatus } from '@/lib/core/filing-status'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { buildOverview } from '@/lib/core/overview'
+import { validatePaystub, type PaystubInput } from '@/lib/core/paystub-input'
 import { getRepository, YEAR_COOKIE } from '@/lib/data'
 import { hashInputs } from '@/lib/repository'
 
@@ -74,4 +75,41 @@ export async function clearAllData(): Promise<ActionResult> {
   const repository = getRepository()
   repository.clearAll()
   return { ok: true, message: 'All data cleared.' }
+}
+
+// ---- Paystubs ----
+
+/** Adds or updates a paystub. The server re-validates everything the form sent. */
+export async function savePaystub(input: PaystubInput): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  const checked = validatePaystub(
+    input,
+    repository.all('taxpayers').map((t) => t.id),
+    repository.taxYears().map((t) => t.year),
+  )
+  if (!checked.ok) return { ok: false, message: checked.error }
+
+  const existing = input.id ? repository.get('payroll', input.id) : undefined
+  if (input.id && !existing) return { ok: false, message: 'That paystub no longer exists.' }
+  repository.put('payroll', { ...existing, ...checked.fields, ...(existing ? { id: existing.id } : {}) })
+  return { ok: true, message: existing ? 'Paystub updated.' : 'Paystub added.' }
+}
+
+export async function deletePaystub(id: string): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  if (!repository.get('payroll', id)) return { ok: false, message: 'That paystub no longer exists.' }
+  repository.remove('payroll', id)
+  return { ok: true, message: 'Paystub deleted.' }
+}
+
+/** The Paid Out checkbox: paid = reconciled actual numbers; unpaid = still projected / up in the air. */
+export async function setPaystubPaidOut(id: string, paidOut: boolean): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  const existing = repository.get('payroll', id)
+  if (!existing) return { ok: false, message: 'That paystub no longer exists.' }
+  repository.put('payroll', { ...existing, status: paidOut ? 'actual' : 'projected' })
+  return { ok: true, message: paidOut ? 'Marked Paid Out.' : 'Marked not paid out.' }
 }

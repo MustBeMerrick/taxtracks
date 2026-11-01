@@ -23,7 +23,7 @@ export function OverviewView({ data }: { data: OverviewInput }) {
         <p>The Overview fills in once there are paychecks, income or liability estimates for this tax year.</p>
         <ul>
           <li>
-            Add paychecks in <Link href="/payroll">Payroll & Withholding</Link>
+            Add paychecks in <Link href="/payroll">Paystubs</Link>
           </li>
           <li>
             Add investment results in <Link href="/income">Income & Investments</Link>

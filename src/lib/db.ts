@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { adjustForWeekend } from '@/lib/core/pay-dates'
 
 /*
  * SQLite via Node's built-in node:sqlite (same approach as option-pilot-app).
@@ -43,6 +44,17 @@ export type DataTable = (typeof DATA_TABLES)[number]
 /** camelCase table name → snake_case SQL identifier. Only ever called with DATA_TABLES members. */
 export const sqlTable = (table: DataTable) => table.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
 
+function snapSamplePayDates(db: DatabaseSync, payDateFor: (record: { payDate: string }, id: string) => string) {
+  const sample = (db.prepare('SELECT data FROM households').all() as { data: string }[]).some((h) => JSON.parse(h.data).isSample === true)
+  if (!sample) return
+  const update = db.prepare('UPDATE payroll SET data = ? WHERE id = ?')
+  for (const row of db.prepare('SELECT id, data FROM payroll').all() as { id: string; data: string }[]) {
+    const record = JSON.parse(row.data) as { payDate: string }
+    const payDate = payDateFor(record, row.id)
+    if (payDate !== record.payDate) update.run(JSON.stringify({ ...record, payDate }), row.id)
+  }
+}
+
 const MIGRATIONS: ((db: DatabaseSync) => void)[] = [
   // 1: domain tables, bookkeeping, passkeys
   (db) => {
@@ -73,6 +85,21 @@ const MIGRATIONS: ((db: DatabaseSync) => void)[] = [
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `)
+  },
+
+  // 2: sample paychecks were dated on the 15th / last day, including weekends. Pay dates move a weekend
+  // date back to the Friday before. Only touches the bundled sample household, never real data.
+  (db) => {
+    snapSamplePayDates(db, (record) => adjustForWeekend(record.payDate))
+  },
+
+  // 3: an earlier draft of migration 2 moved every sample date to a Friday. Sample record ids embed the
+  // original date ("marc-2026-10-15-18"), so rebuild each pay date from it with the correct rule.
+  (db) => {
+    snapSamplePayDates(db, (record, id) => {
+      const original = /^[a-z]+-(\d{4}-\d{2}-\d{2})-\d+$/.exec(id)?.[1]
+      return adjustForWeekend(original ?? record.payDate)
+    })
   },
 ]
 

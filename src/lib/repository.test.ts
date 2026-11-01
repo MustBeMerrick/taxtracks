@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { openDb } from '@/lib/db'
+import { migrate, openDb } from '@/lib/db'
 import { buildOverview } from '@/lib/core/overview'
 import * as sample from '@/lib/fixtures/sample-2026'
 import { parseExportFile, TaxDataRepository } from '@/lib/repository'
@@ -8,6 +8,68 @@ let repo: TaxDataRepository
 
 beforeEach(() => {
   repo = new TaxDataRepository(openDb(':memory:'))
+})
+
+describe('paystubs', () => {
+  it('keeps line items through save, Paid Out toggle and reload; Paid Out drives the Overview paid-to-date', () => {
+    repo.ensureSeeded()
+    const saved = repo.put('payroll', {
+      taxYear: 2026,
+      taxpayerId: 'marc',
+      employer: 'Acme',
+      payDate: '2026-12-31',
+      status: 'projected',
+      gross: 918542,
+      preTax: 8328,
+      federalWithholding: 173653,
+      caWithholding: 71938,
+      socialSecurity: 56475,
+      medicare: 13208,
+      caSdi: 11963,
+      benefits: { medical: 2951, dental: 342, vision: 35, healthcareFsa: 0, dependentFsa: 0, hsa: 5000, retirement401k: 0 },
+      gtli: 670,
+      employerHsa: 5000,
+    })
+    const paidFederal = () => buildOverview(repo.yearData(2026), 'household').paymentsActual.federal
+    const before = paidFederal()
+    repo.put('payroll', { ...repo.get('payroll', saved.id)!, status: 'actual' })
+    expect(paidFederal()).toBe(before + 173653)
+    const reloaded = repo.get('payroll', saved.id)!
+    expect(reloaded.benefits?.hsa).toBe(5000)
+    expect(reloaded.gtli).toBe(670)
+    expect(reloaded.createdAt).toBe(saved.createdAt)
+  })
+})
+
+describe('migrations 2-3: sample pay dates', () => {
+  const setDate = (db: ReturnType<typeof openDb>, id: string, payDate: string) =>
+    db.prepare('UPDATE payroll SET data = json_set(data, \'$.payDate\', ?) WHERE id = ?').run(payDate, id)
+
+  it('moves only weekend dates to the Friday before, and repairs dates an earlier draft forced to Fridays', () => {
+    const db = openDb(':memory:')
+    const sampleRepo = new TaxDataRepository(db)
+    sampleRepo.ensureSeeded()
+    const byDate = (date: string) => sampleRepo.all('payroll').find((r) => r.taxpayerId === 'marc' && r.id.includes(`-${date}-`))!
+
+    const weekday = byDate('2026-10-30') // Oct 31 is a Saturday, so the sample uses Oct 30
+    const midweek = byDate('2026-10-15') // a Thursday: must stay on the 15th
+    setDate(db, weekday.id, '2026-10-31')
+    setDate(db, midweek.id, '2026-10-09') // what the broken draft produced
+    db.exec('PRAGMA user_version = 1')
+    migrate(db)
+    expect(sampleRepo.get('payroll', weekday.id)?.payDate).toBe('2026-10-30')
+    expect(sampleRepo.get('payroll', midweek.id)?.payDate).toBe('2026-10-15')
+  })
+
+  it('leaves real (non-sample) data alone', () => {
+    const db = openDb(':memory:')
+    const realRepo = new TaxDataRepository(db)
+    realRepo.clearAll()
+    const real = realRepo.put('payroll', { taxYear: 2026, taxpayerId: 'marc', employer: 'X', payDate: '2026-10-31', status: 'actual', gross: 1, preTax: 0, federalWithholding: 0, caWithholding: 0, socialSecurity: 0, medicare: 0, caSdi: 0 })
+    db.exec('PRAGMA user_version = 1')
+    migrate(db)
+    expect(realRepo.get('payroll', real.id)?.payDate).toBe('2026-10-31')
+  })
 })
 
 describe('TaxDataRepository', () => {

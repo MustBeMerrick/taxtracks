@@ -35,6 +35,14 @@ export const RULES_2026: WithholdingRules = {
     tables: FED_ANNUAL_TABLES_2026,
   },
 
+  limits: {
+    // IRS Notice 2025-67 (401(k)); Rev. Proc. 2025-19 (HSA); Notice 2025-67 / OBBBA (FSAs).
+    retirementDeferral: 24_500,
+    healthcareFsa: 3_400,
+    dependentCareFsa: 7_500,
+    hsaFamily: 8_750,
+  },
+
   fica: {
     socialSecurityRate: 0.062,
     // SSA 2026 contribution and benefit base.

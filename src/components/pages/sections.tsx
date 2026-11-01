@@ -16,20 +16,6 @@ export function Income() {
   )
 }
 
-export function Payroll() {
-  return (
-    <Placeholder
-      purpose="Per-paycheck records, year-to-date totals, full-year projections and withholding configuration."
-      planned={[
-        'Paycheck ledger with actual vs. projected status and line-level drill-down',
-        'YTD and projected full-year totals by person and household',
-        'Versioned W-4 / DE-4 elections with effective dates',
-        'Expected vs. actual withholding comparison',
-      ]}
-    />
-  )
-}
-
 export function TaxEngine() {
   return (
     <Placeholder

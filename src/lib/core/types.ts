@@ -59,13 +59,30 @@ export interface PayrollRecord extends RecordMeta {
   payDate: IsoDate
   status: Provenance
   gross: Cents
-  /** Pre-tax HSA + 401(k) + other pre-tax deductions. */
+  /** Pre-tax HSA + 401(k) + other pre-tax deductions. Equals the sum of `benefits` when that is present. */
   preTax: Cents
   federalWithholding: Cents
   caWithholding: Cents
   socialSecurity: Cents
   medicare: Cents
   caSdi: Cents
+  /** Line-item pre-tax deductions as printed on the stub (absent on records that only carry a total). */
+  benefits?: PaystubBenefits
+  /** Group-term life imputed income ("Gtli"): taxable wages, not cash. */
+  gtli?: Cents
+  /** Employer HSA contribution: not on the stub, counts toward the HSA limit and California wages. */
+  employerHsa?: Cents
+}
+
+/** Pre-tax deductions by line, per paycheck. */
+export interface PaystubBenefits {
+  medical: Cents
+  dental: Cents
+  vision: Cents
+  healthcareFsa: Cents
+  dependentFsa: Cents
+  hsa: Cents
+  retirement401k: Cents
 }
 
 /** Per-source investment totals until transaction-level ledgers exist. */

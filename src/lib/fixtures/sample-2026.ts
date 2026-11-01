@@ -11,6 +11,7 @@ import type {
   Taxpayer,
 } from '@/lib/core/types'
 import { applyRate, cents, type Cents } from '@/lib/core/money'
+import { semiMonthlyPayDates } from '@/lib/core/pay-dates'
 
 /*
  * SAMPLE DATA ONLY. Shaped after the design mockups so the dashboard has
@@ -65,16 +66,6 @@ interface Paycheck {
   ca: Cents
 }
 
-function semiMonthlyDates(year: number): string[] {
-  const dates: string[] = []
-  for (let m = 1; m <= 12; m++) {
-    const mm = String(m).padStart(2, '0')
-    const lastDay = new Date(Date.UTC(year, m, 0)).getUTCDate()
-    dates.push(`${year}-${mm}-15`, `${year}-${mm}-${lastDay}`)
-  }
-  return dates
-}
-
 /** Adds payroll-tax lines with running YTD wage bases. */
 function buildRecords(taxpayerId: string, employer: string, checks: Paycheck[]): PayrollRecord[] {
   let ytdGross = 0
@@ -100,7 +91,7 @@ function buildRecords(taxpayerId: string, employer: string, checks: Paycheck[]):
   })
 }
 
-const dates = semiMonthlyDates(2026)
+const dates = semiMonthlyPayDates(SAMPLE_YEAR)
 
 const marcChecks: Paycheck[] = dates.map((payDate) => ({
   payDate,
@@ -112,8 +103,8 @@ const marcChecks: Paycheck[] = dates.map((payDate) => ({
 
 const maeChecks: Paycheck[] = dates.flatMap((payDate) => {
   const regular = { payDate, gross: cents(14_000), preTax: cents(83.28), federal: cents(450), ca: cents(170) }
-  if (payDate !== '2026-03-15') return [regular]
-  // Annual bonus paid with the March 15 check, supplemental-rate withholding.
+  if (payDate !== dates[4]) return [regular] // the mid-March paycheck
+  // Annual bonus paid with the mid-March check, supplemental-rate withholding.
   const bonus = cents(38_216.77)
   return [regular, { payDate, gross: bonus, preTax: 0, federal: applyRate(bonus, 0.22), ca: applyRate(bonus, 0.1023) }]
 })
@@ -156,7 +147,7 @@ export const activity: ActivityItem[] = [
   { ...meta('a3'), date: '2026-09-24', label: 'Updated investment P/L (Robinhood)', kind: 'done' },
   { ...meta('a4'), date: '2026-09-10', label: 'Checked extra withholding (W-4 calculator)', kind: 'done' },
   { ...meta('a5'), date: '2026-08-12', label: 'Updated W-4 (additional $4)', kind: 'done' },
-  { ...meta('a6'), date: '2026-10-31', label: 'Next payroll (projected)', kind: 'upcoming' },
+  { ...meta('a6'), date: '2026-10-30', label: 'Next payroll (projected)', kind: 'upcoming' },
   { ...meta('a7'), date: '2027-01-15', label: 'Q4 estimated tax due (if needed)', kind: 'upcoming' },
 ]
 

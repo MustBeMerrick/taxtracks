@@ -1,0 +1,276 @@
+.tt-stubs {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tt-stubs-lead {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.tt-stubs-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0 0 var(--space-4);
+}
+
+.tt-stubs-stat dt {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tt-stubs-stat dd {
+  margin: 2px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.tt-stubs-warnings {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.tt-stubs-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.tt-stubs-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.tt-stubs-warning--error {
+  background: color-mix(in srgb, var(--negative) 14%, transparent);
+}
+
+.tt-stubs-warning--warning {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+}
+
+.tt-stubs-warning--info {
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+}
+
+.tt-stubs-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tt-stubs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tt-stubs-table th,
+.tt-stubs-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.tt-stubs-table thead th {
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tt-stubs-groups th {
+  text-align: center !important;
+  border-bottom: 1px solid var(--border);
+}
+
+.tt-stubs-table tbody th,
+.tt-stubs-table tfoot th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Pay date and Paid Out stay visible while the money columns scroll. */
+.tt-stubs-table th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+}
+
+.tt-stubs-table thead th:first-child {
+  background: var(--surface-inset);
+}
+
+.tt-stubs-table td:nth-child(2),
+.tt-stubs-table thead th:nth-child(2) {
+  text-align: center;
+}
+
+.tt-stubs-ytd {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+/* Not paid out: projected or up in the air. */
+.tt-stubs-pending td,
+.tt-stubs-pending th {
+  color: var(--text-muted);
+}
+
+.tt-stubs-pending th:first-child {
+  background: color-mix(in srgb, var(--warning) 6%, var(--surface));
+}
+
+.tt-stubs-pending td {
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+}
+
+.tt-stubs-table tr[data-flagged='true'] th:first-child {
+  box-shadow: inset 3px 0 0 var(--negative);
+}
+
+.tt-stubs-table tfoot th,
+.tt-stubs-table tfoot td {
+  background: var(--surface-inset);
+  font-weight: 600;
+}
+
+.tt-stubs-table tfoot tr:last-child th,
+.tt-stubs-table tfoot tr:last-child td {
+  border-bottom: 0;
+}
+
+.tt-stubs-paid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+.tt-stubs-paid input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.tt-stubs-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.tt-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tt-icon-button:hover {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Add / edit dialog */
+.tt-dialog {
+  width: min(680px, calc(100vw - 2 * var(--space-4)));
+  max-height: calc(100dvh - 2 * var(--space-4));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+
+.tt-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.tt-dialog form {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 2 * var(--space-4));
+}
+
+.tt-dialog-header {
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.tt-dialog-header h2 {
+  margin: 0 0 var(--space-1);
+  font-size: 18px;
+}
+
+.tt-dialog-header p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.tt-dialog-body {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-5) var(--space-4);
+  overflow-y: auto;
+}
+
+.tt-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.tt-stubs-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+
+.tt-stubs-check {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-stubs-negative {
+  color: var(--negative);
+}
+
+@media (max-width: 480px) {
+  .tt-dialog-header,
+  .tt-dialog-body,
+  .tt-dialog-footer {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+}
