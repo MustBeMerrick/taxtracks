@@ -11,6 +11,7 @@ import { SUPPORTED_TAX_YEARS, UnsupportedTaxYearError } from '@/lib/core/withhol
 import {
   PAY_FREQUENCIES,
   PAY_FREQUENCY_LABELS,
+  type SalaryPaycheckInput,
   type SalaryPaycheckResult,
   type TraceLine,
 } from '@/lib/core/withholding/types'
@@ -60,7 +61,7 @@ export function SalaryPaycheckCalculator({ today }: { today: string }) {
   const outcome = useMemo(() => {
     if (!parsed.ok) return { kind: 'invalid' as const }
     try {
-      return { kind: 'ok' as const, result: calculateSalaryPaycheck(parsed.input) }
+      return { kind: 'ok' as const, input: parsed.input, result: calculateSalaryPaycheck(parsed.input) }
     } catch (err) {
       if (err instanceof UnsupportedTaxYearError) return { kind: 'year' as const, taxYear: err.taxYear }
       throw err
@@ -103,7 +104,7 @@ export function SalaryPaycheckCalculator({ today }: { today: string }) {
       </Card>
 
       <div className="tt-calc-results">
-        {outcome.kind === 'ok' && <Results result={outcome.result} frequency={form.payFrequency} />}
+        {outcome.kind === 'ok' && <Results result={outcome.result} input={outcome.input} frequency={form.payFrequency} />}
         {outcome.kind === 'year' && (
           <Card title="No rules for this year">
             <p className="tt-calc-note">
@@ -406,7 +407,15 @@ function BenefitsTab(p: TabProps) {
 
 // ── Results ─────────────────────────────────────────────────────────────────────────────
 
-function Results({ result, frequency }: { result: SalaryPaycheckResult; frequency: keyof typeof PAY_FREQUENCY_LABELS }) {
+function Results({
+  result,
+  input,
+  frequency,
+}: {
+  result: SalaryPaycheckResult
+  input: SalaryPaycheckInput
+  frequency: keyof typeof PAY_FREQUENCY_LABELS
+}) {
   const w = result.withholding
   const taxRows: [string, number][] = [
     ['Federal income tax', w.federalIncomeTax],
@@ -416,28 +425,29 @@ function Results({ result, frequency }: { result: SalaryPaycheckResult; frequenc
     ['California income tax', w.californiaIncomeTax],
     ['California SDI', w.californiaSdi],
   ]
+  const b = input.benefits
+  const benefitRows: [string, number][] = [
+    ['Medical', b.medical],
+    ['Dental', b.dental],
+    ['Vision', b.vision],
+    ['Healthcare FSA', b.healthcareFsa],
+    ['Dependent care FSA', b.dependentFsa],
+    ['HSA', b.hsa],
+    ['401(k) / 403(b)', b.retirementPreTax],
+  ]
 
   return (
     <>
       <Card title={`Take-home · ${PAY_FREQUENCY_LABELS[frequency].toLowerCase()}`}>
         <div className="tt-calc-summary">
           <Donut gross={result.gross} taxes={result.totalTaxes} benefits={result.benefitDeductions} net={result.netPay} />
-          <dl className="tt-calc-totals">
-            <Row label="Earnings" value={result.gross} />
-            <Row label="Taxes" value={-result.totalTaxes} swatch="var(--series-2)" />
-            <Row label="Benefits" value={-result.benefitDeductions} swatch="var(--series-3)" />
-            <Row label="Take-home" value={result.netPay} swatch="var(--series-1)" strong />
-          </dl>
+          <div className="tt-calc-totals">
+            <TotalLine label="Earnings" value={result.gross} />
+            <BreakdownLine label="Taxes" value={-result.totalTaxes} swatch="var(--series-2)" items={taxRows} />
+            <BreakdownLine label="Benefits" value={-result.benefitDeductions} swatch="var(--series-3)" items={benefitRows} />
+            <TotalLine label="Take-home" value={result.netPay} swatch="var(--series-1)" strong />
+          </div>
         </div>
-      </Card>
-
-      <Card title="Taxes withheld">
-        <dl className="tt-calc-totals">
-          {taxRows.map(([label, value]) => (
-            <Row key={label} label={label} value={value} />
-          ))}
-          <Row label="Total" value={result.totalTaxes} strong />
-        </dl>
         <div className="tt-calc-notes">
           {result.gross > 0 && (
             <p className="tt-calc-line">
@@ -498,14 +508,33 @@ function formatTrace(line: TraceLine): string {
   return String(line.value)
 }
 
-function Row({ label, value, swatch, strong }: { label: string; value: number; swatch?: string; strong?: boolean }) {
+function TotalLine({ label, value, swatch, strong }: { label: string; value: number; swatch?: string; strong?: boolean }) {
   return (
     <div className={`tt-calc-row ${strong ? 'tt-calc-row--strong' : ''}`}>
-      <dt>
+      <span className="tt-calc-label">
         {swatch && <span className="tt-calc-swatch" style={{ background: swatch }} aria-hidden="true" />}
         {label}
-      </dt>
-      <dd>{formatMoney(value)}</dd>
+      </span>
+      <span className="tt-calc-value">{formatMoney(value)}</span>
+    </div>
+  )
+}
+
+/** A total with the items that add up to it listed underneath (zero items hidden). */
+function BreakdownLine({ label, value, swatch, items }: { label: string; value: number; swatch: string; items: [string, number][] }) {
+  const shown = items.filter(([, amount]) => amount !== 0)
+  return (
+    <div className="tt-calc-breakdown">
+      <TotalLine label={label} value={value} swatch={swatch} />
+      <ul className="tt-calc-expand-items">
+        {shown.length === 0 && <li className="tt-calc-expand-none">None</li>}
+        {shown.map(([name, amount]) => (
+          <li key={name}>
+            <span>{name}</span>
+            <span className="tt-calc-value">{formatMoney(-amount)}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
