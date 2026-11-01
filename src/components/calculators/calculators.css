@@ -125,6 +125,45 @@
   color: var(--text-muted);
 }
 
+.tt-calc-notes {
+  display: grid;
+  /* Label column hugs its text; values sit right beside it in one right-aligned column. */
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  column-gap: var(--space-4);
+  margin-top: var(--space-3);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-calc-notes p,
+.tt-calc-notes ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tt-calc-notes ul,
+.tt-calc-notes li,
+.tt-calc-line {
+  display: contents;
+}
+
+.tt-calc-notes > p:not(.tt-calc-line) {
+  grid-column: 1 / -1;
+}
+
+.tt-calc-notes li > span:first-child::before {
+  content: '•';
+  margin: 0 var(--space-2) 0 var(--space-2);
+}
+
+.tt-calc-line > span:last-child {
+  text-align: right;
+}
+
 .tt-calc-error {
   color: var(--negative);
 }

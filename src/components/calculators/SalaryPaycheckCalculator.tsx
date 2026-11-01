@@ -438,11 +438,30 @@ function Results({ result, frequency }: { result: SalaryPaycheckResult; frequenc
           ))}
           <Row label="Total" value={result.totalTaxes} strong />
         </dl>
-        <p className="tt-calc-hint">
-          {result.gross > 0 && `Effective rate ${formatPercent(result.totalTaxes / result.gross)} of gross. `}
-          Wages: federal {formatMoney(result.wages.federal)}, FICA {formatMoney(result.wages.fica)}, CA{' '}
-          {formatMoney(result.wages.californiaIncomeTax)}, SDI {formatMoney(result.wages.sdi)}.
-        </p>
+        <div className="tt-calc-notes">
+          {result.gross > 0 && (
+            <p className="tt-calc-line">
+              <span>Effective rate (of gross)</span>
+              <span>{formatPercent(result.totalTaxes / result.gross)}</span>
+            </p>
+          )}
+          <p>Wages</p>
+          <ul>
+            {(
+              [
+                ['Federal', result.wages.federal],
+                ['FICA', result.wages.fica],
+                ['California', result.wages.californiaIncomeTax],
+                ['SDI', result.wages.sdi],
+              ] as const
+            ).map(([label, value]) => (
+              <li key={label} className="tt-calc-line">
+                <span>{label}</span>
+                <span>{formatMoney(value)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </Card>
 
       <Card title="How it was calculated">
