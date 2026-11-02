@@ -402,3 +402,29 @@
     font-size: 16px;
   }
 }
+
+/* Simulate new withholding dialog */
+.tt-simulate-dialog {
+  width: min(780px, calc(100vw - 2 * var(--space-4)));
+}
+
+.tt-simulate-scroll {
+  max-height: 40vh;
+}
+
+.tt-simulate-delta {
+  white-space: nowrap;
+}
+
+.tt-simulate-refund {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.tt-simulate-refund .tt-muted {
+  margin: 0 0 var(--space-1);
+  font-size: 12px;
+}

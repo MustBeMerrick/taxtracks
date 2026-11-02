@@ -9,7 +9,6 @@ import { formatMoney } from '@/lib/core/money'
 import { formatPayDate } from '@/lib/core/pay-dates'
 import { paystubRows, payrollWarnings, summarize, type PayrollWarning } from '@/lib/core/payroll'
 import type { PayrollRecord, Taxpayer } from '@/lib/core/types'
-import { getWithholdingRules } from '@/lib/core/withholding/rules'
 import { useScheduleRefresh } from '@/lib/refresh-context'
 import '@/components/calculators/calculators.css'
 import '@/components/paystubs/paystubs.css'
@@ -37,8 +36,8 @@ export function PaystubsView({ year, taxpayers, paystubs, today }: Props) {
   return (
     <div className="tt-stubs">
       <p className="tt-stubs-lead">
-        Tick <strong>Paid Out</strong> once a paystub is final. Year-to-date totals count Paid Out paystubs only; unchecked rows are still
-        projected or up in the air.
+        Tick <strong>Paid Out</strong> once a paystub is final. Hover (or focus) a paycheck amount for its year-to-date total, counting
+        Paid Out paystubs only; unchecked rows are still projected or up in the air.
       </p>
       {taxpayers.map((person) => (
         <PersonLedger
@@ -95,14 +94,6 @@ function PersonLedger({
   const warningsByRecord = new Map<string, PayrollWarning[]>()
   for (const w of warnings) if (w.recordId) warningsByRecord.set(w.recordId, [...(warningsByRecord.get(w.recordId) ?? []), w])
 
-  let maxSocialSecurity: number | null = null
-  try {
-    const r = getWithholdingRules(year)
-    maxSocialSecurity = Math.round(r.fica.socialSecurityWageBase * r.fica.socialSecurityRate * 100)
-  } catch {
-    /* no rules for this year: no cap shown */
-  }
-
   async function run(id: string, action: () => Promise<{ ok: boolean; message: string }>) {
     setBusy((b) => new Set(b).add(id))
     setError(null)
@@ -130,17 +121,6 @@ function PersonLedger({
         </button>
       }
     >
-      <dl className="tt-stubs-stats">
-        <Stat label="Paid Out" value={`${summary.paidCount} of ${paystubs.length}`} />
-        <Stat label="YTD gross" value={formatMoney(summary.paid.gross)} />
-        <Stat label="YTD federal tax" value={formatMoney(summary.paid.federal)} />
-        <Stat label="YTD CA tax" value={formatMoney(summary.paid.ca)} />
-        <Stat
-          label="YTD Social Security"
-          value={`${formatMoney(summary.paid.socialSecurity)}${maxSocialSecurity ? ` of ${formatMoney(maxSocialSecurity)} max` : ''}`}
-        />
-      </dl>
-
       {warnings.length > 0 && (
         <ul className="tt-stubs-warnings" aria-label={`Checks for ${person.name}`}>
           {warnings.map((w) => (
@@ -166,21 +146,9 @@ function PersonLedger({
         <div className="tt-stubs-scroll" tabIndex={0} role="region" aria-label={`${person.name}'s paystub table`}>
           <table className="tt-stubs-table">
             <thead>
-              <tr className="tt-stubs-groups">
-                <th colSpan={2} scope="colgroup">
-                  Paystub
-                </th>
-                <th colSpan={8} scope="colgroup">
-                  This paycheck
-                </th>
-                <th colSpan={6} scope="colgroup">
-                  Year to date (Paid Out only)
-                </th>
-                <th />
-              </tr>
               <tr>
                 <th scope="col">Pay date</th>
-                <th scope="col">Paid Out</th>
+                <th scope="col" className="tt-stubs-center-col">Paid Out</th>
                 <th scope="col">Gross</th>
                 <th scope="col">Pre-tax</th>
                 <th scope="col">Federal</th>
@@ -189,25 +157,47 @@ function PersonLedger({
                 <th scope="col">CA tax</th>
                 <th scope="col">CA SDI</th>
                 <th scope="col">Net pay</th>
-                <th scope="col">Gross</th>
-                <th scope="col">Federal</th>
-                <th scope="col">Soc. Sec.</th>
-                <th scope="col">Medicare</th>
-                <th scope="col">CA tax</th>
-                <th scope="col">CA SDI</th>
                 <th scope="col">
                   <span className="visually-hidden">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
+              <tr className="tt-stubs-total-row">
+                <th scope="row" colSpan={2}>
+                  Paid Out total
+                </th>
+                <Money value={summary.paid.gross} />
+                <Money value={summary.paid.preTax} />
+                <Money value={summary.paid.federal} />
+                <Money value={summary.paid.socialSecurity} />
+                <Money value={summary.paid.medicare} />
+                <Money value={summary.paid.ca} />
+                <Money value={summary.paid.sdi} />
+                <Money value={summary.paid.net} />
+                <td />
+              </tr>
+              <tr className="tt-stubs-total-row">
+                <th scope="row" colSpan={2}>
+                  Full year (incl. not paid out)
+                </th>
+                <Money value={summary.fullYear.gross} />
+                <Money value={summary.fullYear.preTax} />
+                <Money value={summary.fullYear.federal} />
+                <Money value={summary.fullYear.socialSecurity} />
+                <Money value={summary.fullYear.medicare} />
+                <Money value={summary.fullYear.ca} />
+                <Money value={summary.fullYear.sdi} />
+                <Money value={summary.fullYear.net} />
+                <td />
+              </tr>
               {rows.map(({ record, amounts, ytd }) => {
                 const paid = record.status === 'actual'
                 const flagged = warningsByRecord.get(record.id)?.some((w) => w.severity !== 'info')
                 return (
                   <tr key={record.id} className={paid ? '' : 'tt-stubs-pending'} data-flagged={flagged ? 'true' : undefined}>
                     <th scope="row">{formatPayDate(record.payDate)}</th>
-                    <td>
+                    <td className="tt-stubs-center-col">
                       <label className="tt-stubs-paid">
                         <input
                           type="checkbox"
@@ -218,20 +208,14 @@ function PersonLedger({
                         <span className="visually-hidden">Paid Out for {formatPayDate(record.payDate)}</span>
                       </label>
                     </td>
-                    <Money value={amounts.gross} />
-                    <Money value={amounts.preTax} />
-                    <Money value={amounts.federal} />
-                    <Money value={amounts.socialSecurity} />
-                    <Money value={amounts.medicare} />
-                    <Money value={amounts.ca} />
-                    <Money value={amounts.sdi} />
-                    <Money value={amounts.net} />
-                    <Money value={ytd.gross} ytd />
-                    <Money value={ytd.federal} ytd />
-                    <Money value={ytd.socialSecurity} ytd />
-                    <Money value={ytd.medicare} ytd />
-                    <Money value={ytd.ca} ytd />
-                    <Money value={ytd.sdi} ytd />
+                    <Money value={amounts.gross} ytd={paid ? ytd.gross : undefined} />
+                    <Money value={amounts.preTax} ytd={paid ? ytd.preTax : undefined} />
+                    <Money value={amounts.federal} ytd={paid ? ytd.federal : undefined} />
+                    <Money value={amounts.socialSecurity} ytd={paid ? ytd.socialSecurity : undefined} />
+                    <Money value={amounts.medicare} ytd={paid ? ytd.medicare : undefined} />
+                    <Money value={amounts.ca} ytd={paid ? ytd.ca : undefined} />
+                    <Money value={amounts.sdi} ytd={paid ? ytd.sdi : undefined} />
+                    <Money value={amounts.net} ytd={paid ? ytd.net : undefined} />
                     <td className="tt-stubs-actions">
                       {confirmingDelete === record.id ? (
                         <span className="tt-confirm-inline">
@@ -270,36 +254,6 @@ function PersonLedger({
                 )
               })}
             </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row" colSpan={2}>
-                  Paid Out total
-                </th>
-                <Money value={summary.paid.gross} />
-                <Money value={summary.paid.preTax} />
-                <Money value={summary.paid.federal} />
-                <Money value={summary.paid.socialSecurity} />
-                <Money value={summary.paid.medicare} />
-                <Money value={summary.paid.ca} />
-                <Money value={summary.paid.sdi} />
-                <Money value={summary.paid.net} />
-                <td colSpan={7} />
-              </tr>
-              <tr>
-                <th scope="row" colSpan={2}>
-                  Full year (incl. not paid out)
-                </th>
-                <Money value={summary.fullYear.gross} />
-                <Money value={summary.fullYear.preTax} />
-                <Money value={summary.fullYear.federal} />
-                <Money value={summary.fullYear.socialSecurity} />
-                <Money value={summary.fullYear.medicare} />
-                <Money value={summary.fullYear.ca} />
-                <Money value={summary.fullYear.sdi} />
-                <Money value={summary.fullYear.net} />
-                <td colSpan={7} />
-              </tr>
-            </tfoot>
           </table>
         </div>
       )}
@@ -307,15 +261,17 @@ function PersonLedger({
   )
 }
 
-function Money({ value, ytd }: { value: number; ytd?: boolean }) {
-  return <td className={`tt-stubs-num ${ytd ? 'tt-stubs-ytd' : ''}`}>{formatMoney(value)}</td>
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
+function Money({ value, ytd }: { value: number; ytd?: number }) {
+  if (ytd === undefined) return <td className="tt-stubs-num">{formatMoney(value)}</td>
   return (
-    <div className="tt-stubs-stat">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
+    <td className="tt-stubs-num">
+      <span className="tt-stubs-tip" tabIndex={0}>
+        {formatMoney(value)}
+        <span className="tt-stubs-tip-bubble" role="tooltip">
+          YTD {formatMoney(ytd)}
+        </span>
+      </span>
+    </td>
   )
 }
+

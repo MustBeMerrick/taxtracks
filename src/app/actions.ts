@@ -5,6 +5,7 @@ import { requireSession } from '@/lib/auth/session'
 import type { FilingStatus } from '@/lib/core/filing-status'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { buildOverview } from '@/lib/core/overview'
+import type { Cents } from '@/lib/core/money'
 import { validatePaystub, type PaystubInput } from '@/lib/core/paystub-input'
 import { getRepository, YEAR_COOKIE } from '@/lib/data'
 import { hashInputs } from '@/lib/repository'
@@ -112,4 +113,40 @@ export async function setPaystubPaidOut(id: string, paidOut: boolean): Promise<A
   if (!existing) return { ok: false, message: 'That paystub no longer exists.' }
   repository.put('payroll', { ...existing, status: paidOut ? 'actual' : 'projected' })
   return { ok: true, message: paidOut ? 'Marked Paid Out.' : 'Marked not paid out.' }
+}
+
+export interface SimulatedWithholdingUpdate {
+  id: string
+  federalWithholding: Cents
+  caWithholding: Cents
+  socialSecurity: Cents
+  medicare: Cents
+  caSdi: Cents
+}
+
+const isCents = (n: unknown): n is Cents => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0
+
+/** Applies a "Simulate new withholding" result to the not-yet-Paid-Out rows it was computed from. */
+export async function commitWithholdingSimulation(updates: SimulatedWithholdingUpdate[]): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  let applied = 0
+  for (const u of updates) {
+    if (![u.federalWithholding, u.caWithholding, u.socialSecurity, u.medicare, u.caSdi].every(isCents)) {
+      return { ok: false, message: 'Amounts must be zero or more.' }
+    }
+    const existing = repository.get('payroll', u.id)
+    // Paid Out rows are reconciled against the real stub; a simulation never overwrites one.
+    if (!existing || existing.status === 'actual') continue
+    repository.put('payroll', {
+      ...existing,
+      federalWithholding: u.federalWithholding,
+      caWithholding: u.caWithholding,
+      socialSecurity: u.socialSecurity,
+      medicare: u.medicare,
+      caSdi: u.caSdi,
+    })
+    applied += 1
+  }
+  return { ok: true, message: `Updated ${applied} paycheck${applied === 1 ? '' : 's'}.` }
 }

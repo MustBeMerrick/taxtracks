@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { savePaystub } from '@/app/actions'
-import { Select } from '@/components/ui/controls'
 import { handleNumericChange } from '@/components/ui/numeric-input'
 import { formatMoney } from '@/lib/core/money'
-import { formatPayDate, nextPayDate, semiMonthlyPayDates } from '@/lib/core/pay-dates'
+import { nextPayDate } from '@/lib/core/pay-dates'
 import { benefitsTotal, EMPTY_BENEFITS } from '@/lib/core/payroll'
 import type { PaystubInput } from '@/lib/core/paystub-input'
 import type { PayrollRecord, PaystubBenefits } from '@/lib/core/types'
@@ -101,19 +100,7 @@ export function PaystubDialog({
     if (el && !el.open) el.showModal()
   }, [])
 
-  // Pay dates are the 15th and the last day of each month (the Friday before when that is a weekend).
-  const payDateOptions = [
-    ...semiMonthlyPayDates(year).map((date) => ({
-      value: date,
-      label: `${formatPayDate(date)}${takenDates.includes(date) ? ' — already entered' : ''}`,
-    })),
-    // An existing paystub keeps a date that isn't on the schedule rather than silently changing it.
-    ...(form.payDate && !semiMonthlyPayDates(year).includes(form.payDate)
-      ? [{ value: form.payDate, label: `${formatPayDate(form.payDate)} — not a scheduled pay date` }]
-      : []),
-  ]
-
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
+  const set =<K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
 
   // Parse everything; field errors only show after the first submit attempt.
   const cents: Record<MoneyKey, number | null> = Object.fromEntries(MONEY_KEYS.map((k) => [k, parseMoney(form[k])])) as Record<MoneyKey, number | null>
@@ -218,12 +205,19 @@ export function PaystubDialog({
           <fieldset className="tt-calc-group">
             <legend>Paycheck</legend>
             <div className="tt-stubs-form-grid">
-              <Select
-                label="Pay date"
-                value={form.payDate}
-                options={payDateOptions}
-                onChange={(v) => set('payDate', v)}
-              />
+              <div className="tt-calc-field">
+                <label htmlFor="stub-pay-date" className="tt-field-label">
+                  Pay date
+                </label>
+                <div className="tt-calc-input">
+                  <input
+                    id="stub-pay-date"
+                    type="date"
+                    value={form.payDate}
+                    onChange={(e) => set('payDate', e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="tt-calc-field">
                 <label htmlFor="stub-employer" className="tt-field-label">
                   Employer

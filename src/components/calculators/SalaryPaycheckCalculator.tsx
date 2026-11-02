@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { handleNumericChange } from '@/components/ui/numeric-input'
 import { Segmented, Select } from '@/components/ui/controls'
 import { formatMoney, formatPercent } from '@/lib/core/money'
+import type { LiabilityEstimate, PayrollRecord, Taxpayer } from '@/lib/core/types'
 import { calculateSalaryPaycheck } from '@/lib/core/withholding/calculate'
 import { defaultForm, formatDollars, formToInput, type FormErrors, type PaycheckForm } from '@/lib/core/withholding/form'
 import { SUPPORTED_TAX_YEARS, UnsupportedTaxYearError } from '@/lib/core/withholding/rules'
@@ -16,6 +17,7 @@ import {
   type SalaryPaycheckResult,
   type TraceLine,
 } from '@/lib/core/withholding/types'
+import { SimulateWithholdingDialog } from '@/components/calculators/SimulateWithholdingDialog'
 import '@/components/calculators/calculators.css'
 
 type Tab = 'earnings' | 'federal' | 'state' | 'benefits'
@@ -29,9 +31,22 @@ const TABS: { value: Tab; label: string }[] = [
 
 const STORAGE_KEY = 'taxtracks.salary-paycheck-form.v1'
 
-export function SalaryPaycheckCalculator({ today }: { today: string }) {
+export function SalaryPaycheckCalculator({
+  today,
+  taxYear,
+  taxpayers,
+  paystubs,
+  liabilities,
+}: {
+  today: string
+  taxYear: number
+  taxpayers: Pick<Taxpayer, 'id' | 'name'>[]
+  paystubs: PayrollRecord[]
+  liabilities: LiabilityEstimate[]
+}) {
   const [form, setForm] = useState<PaycheckForm>(() => defaultForm(today))
   const [tab, setTab] = useState<Tab>('earnings')
+  const [simulating, setSimulating] = useState(false)
 
   // Per-viewer convenience: remember the last inputs in this browser. Never required.
   const [restored, setRestored] = useState(false)
@@ -105,7 +120,22 @@ export function SalaryPaycheckCalculator({ today }: { today: string }) {
       </Card>
 
       <div className="tt-calc-results">
-        {outcome.kind === 'ok' && <Results result={outcome.result} input={outcome.input} frequency={form.payFrequency} />}
+        {outcome.kind === 'ok' && (
+          <>
+            <Results result={outcome.result} input={outcome.input} frequency={form.payFrequency} />
+            {taxpayers.length > 0 && (
+              <Card title="Simulate new withholding">
+                <p className="tt-calc-note">
+                  Apply the Federal, California and Benefits tabs above to a person’s not-yet-Paid-Out paychecks on the Paystubs page,
+                  and see the effect before committing to anything.
+                </p>
+                <button type="button" className="tt-button" onClick={() => setSimulating(true)}>
+                  Simulate new withholding
+                </button>
+              </Card>
+            )}
+          </>
+        )}
         {outcome.kind === 'year' && (
           <Card title="No rules for this year">
             <p className="tt-calc-note">
@@ -120,6 +150,17 @@ export function SalaryPaycheckCalculator({ today }: { today: string }) {
           </Card>
         )}
       </div>
+
+      {simulating && outcome.kind === 'ok' && (
+        <SimulateWithholdingDialog
+          taxpayers={taxpayers}
+          paystubs={paystubs}
+          taxYear={taxYear}
+          election={{ federal: outcome.input.federal, california: outcome.input.california, benefits: outcome.input.benefits }}
+          liabilities={liabilities}
+          onClose={() => setSimulating(false)}
+        />
+      )}
     </div>
   )
 }
