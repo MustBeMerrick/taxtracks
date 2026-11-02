@@ -66,7 +66,7 @@ export function IncomeComposition({ model }: { model: OverviewModel }) {
           </PieChart>
           <div className="tt-donut-center">
             <strong>{formatMoney(total, { precision: 'compact' })}</strong>
-            <span>{excludesJointIncome ? 'Wage income' : 'Total income'}</span>
+            <span>{excludesJointIncome ? 'Personal income' : 'Total income'}</span>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ export function IncomeComposition({ model }: { model: OverviewModel }) {
       </div>
       <p className="tt-panel-footnote">
         {hasOffsets && 'Net losses offset income and are not drawn in the ring. '}
-        {excludesJointIncome ? 'Joint investment and other income appear in the Household view.' : 'Before capital-loss limits.'}{' '}
+        {excludesJointIncome ? 'Joint other income appears in the Household view.' : 'Before capital-loss limits.'}{' '}
         <ProvenanceBadge status="mixed" />
       </p>
     </Card>

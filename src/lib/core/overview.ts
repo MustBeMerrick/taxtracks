@@ -142,6 +142,8 @@ function orderActivity(items: ActivityItem[]): ActivityItem[] {
 export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel {
   const household = scope === 'household'
   const scopedPayroll = household ? input.payroll : input.payroll.filter((r) => r.taxpayerId === scope)
+  // Brokerage results belong to one person; rows without an owner are legacy joint rows (household only).
+  const scopedInvestments = household ? input.investments : input.investments.filter((i) => i.owner === scope)
   const actualPayroll = input.payroll.filter((r) => r.status === 'actual')
 
   // Liability and payments are joint under MFJ, so they never narrow by scope (spec §3).
@@ -157,7 +159,7 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   )
   const refund = byJurisdiction(payments.federal - liability.federal, payments.ca - liability.ca)
 
-  // Income: W-2 wages (gross less pre-tax) per scope; investment and other income are joint.
+  // Income: W-2 wages (gross less pre-tax) per scope; brokerage income is per owner; other income is joint.
   const components: IncomeComponent[] = [
     {
       key: 'wages',
@@ -166,19 +168,19 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
       status: combinedStatus(scopedPayroll.map((r) => r.status)),
     },
   ]
+  const invStatus = combinedStatus(scopedInvestments.map((i) => i.status))
+  components.push(
+    { key: 'shortTerm', label: 'Net short-term gain/loss', amount: sumBy(scopedInvestments, (i) => i.shortTerm), status: invStatus },
+    { key: 'longTerm', label: 'Net long-term gain/loss', amount: sumBy(scopedInvestments, (i) => i.longTerm), status: invStatus },
+    { key: 'dividendsInterest', label: 'Dividends & interest', amount: sumBy(scopedInvestments, (i) => i.dividendsInterest), status: invStatus },
+  )
   if (household) {
-    const invStatus = combinedStatus(input.investments.map((i) => i.status))
-    components.push(
-      { key: 'shortTerm', label: 'Net short-term gain/loss', amount: sumBy(input.investments, (i) => i.shortTerm), status: invStatus },
-      { key: 'longTerm', label: 'Net long-term gain/loss', amount: sumBy(input.investments, (i) => i.longTerm), status: invStatus },
-      { key: 'dividendsInterest', label: 'Dividends & interest', amount: sumBy(input.investments, (i) => i.dividendsInterest), status: invStatus },
-      {
-        key: 'other',
-        label: 'Other income',
-        amount: sumBy(input.otherIncome, (o) => o.amount),
-        status: combinedStatus(input.otherIncome.map((o) => o.status)),
-      },
-    )
+    components.push({
+      key: 'other',
+      label: 'Other income',
+      amount: sumBy(input.otherIncome, (o) => o.amount),
+      status: combinedStatus(input.otherIncome.map((o) => o.status)),
+    })
   }
   const incomeTotal = sumBy(components, (c) => c.amount)
   const householdIncome = household ? incomeTotal : buildOverview(input, 'household').income.total
@@ -204,7 +206,7 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
     difference: payments[j] - liability[j],
   }))
 
-  const investmentRows = input.investments.map((i) => ({ ...i, total: i.shortTerm + i.longTerm + i.dividendsInterest }))
+  const investmentRows = scopedInvestments.map((i) => ({ ...i, total: i.shortTerm + i.longTerm + i.dividendsInterest }))
 
   const people = household ? input.taxpayers : input.taxpayers.filter((t) => t.id === scope)
   const paycheckRows: PaycheckRow[] = people.map((t) => {

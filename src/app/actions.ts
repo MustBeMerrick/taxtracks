@@ -6,10 +6,11 @@ import type { FilingStatus } from '@/lib/core/filing-status'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { buildOverview } from '@/lib/core/overview'
 import type { Cents } from '@/lib/core/money'
+import { investmentId, matchingEntries, validateInvestmentEntry, type InvestmentEntryInput } from '@/lib/core/investments'
 import { benefitsTotal } from '@/lib/core/payroll'
 import type { PaystubBenefits } from '@/lib/core/types'
 import { validatePaystub, type PaystubInput } from '@/lib/core/paystub-input'
-import { getRepository, YEAR_COOKIE } from '@/lib/data'
+import { getRepository, selectedYear, YEAR_COOKIE } from '@/lib/data'
 import { hashInputs } from '@/lib/repository'
 
 // Every action re-checks the session: actions are reachable by direct POST.
@@ -160,4 +161,37 @@ export async function commitWithholdingSimulation(updates: SimulatedWithholdingU
     applied += 1
   }
   return { ok: true, message: `Updated ${applied} paycheck${applied === 1 ? '' : 's'}.` }
+}
+
+/** Saves one person's brokerage results (estimate or final 1099 numbers) for the selected tax year. */
+export async function saveInvestmentEntry(input: InvestmentEntryInput): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  const year = await selectedYear()
+  if (!repository.taxYears().some((t) => t.year === year)) return { ok: false, message: 'Pick a tax year first.' }
+  const checked = validateInvestmentEntry(input, repository.all('taxpayers').map((t) => t.id), year)
+  if (!checked.ok) return { ok: false, message: checked.error }
+
+  const [existing, ...duplicates] = matchingEntries(repository.all('investmentSummaries', year), input.taxpayerId, input.brokerage)
+  const f = checked.fields
+  const empty = f.shortTerm === 0 && f.longTerm === 0 && f.dividendsInterest === 0
+  if (!existing && empty && f.status !== 'actual') return { ok: true, message: 'Nothing to save.' }
+  repository.put('investmentSummaries', { ...existing, ...f, id: existing?.id ?? investmentId(year, input.taxpayerId, input.brokerage) })
+  // One row per person and brokerage: drop any stray copies so they can't be summed twice.
+  for (const extra of duplicates) repository.remove('investmentSummaries', extra.id)
+  return { ok: true, message: 'Saved.' }
+}
+
+/** Capital losses carried in from the prior year (positive amounts), used by the household income summary. */
+export async function saveCarryover(kind: 'capital_loss_short' | 'capital_loss_long', amount: Cents): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  if (kind !== 'capital_loss_short' && kind !== 'capital_loss_long') return { ok: false, message: 'Unknown carryover.' }
+  if (!isCents(amount)) return { ok: false, message: 'Enter zero or a positive amount.' }
+  const year = await selectedYear()
+  if (!repository.taxYears().some((t) => t.year === year)) return { ok: false, message: 'Pick a tax year first.' }
+  const id = `carry-${year}-${kind}`
+  const existing = repository.get('carryovers', id)
+  repository.put('carryovers', { ...existing, id, taxYear: year, jurisdiction: 'federal', kind, amount })
+  return { ok: true, message: 'Saved.' }
 }

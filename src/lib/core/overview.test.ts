@@ -44,7 +44,8 @@ describe('overview model (spec §5 invariants)', () => {
     expect(marc.liability).toEqual(household.liability)
     expect(marc.refund).toEqual(household.refund)
     expect(marc.paychecks.rows.map((r) => r.taxpayerId)).toEqual(['marc'])
-    expect(marc.income.components.map((c) => c.key)).toEqual(['wages'])
+    // Brokerage results are per person; only joint "other income" stays household-only.
+    expect(marc.income.components.map((c) => c.key)).toEqual(['wages', 'shortTerm', 'longTerm', 'dividendsInterest'])
     expect(marc.effectiveRates).toEqual(household.effectiveRates)
   })
 })

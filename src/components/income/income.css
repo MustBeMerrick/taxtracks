@@ -1,0 +1,104 @@
+.tt-income-table .tt-income-input {
+  width: 100px;
+  min-height: 32px;
+  padding: 0 8px;
+  gap: 3px;
+}
+
+.tt-income-table .tt-income-input input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-income-hint,
+.tt-income-error {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  white-space: normal;
+}
+
+.tt-income-error {
+  color: var(--negative);
+}
+
+/* Light bars group the columns: dividends | short-term (3) | long-term (3) | final. */
+.tt-income-table th:nth-child(3),
+.tt-income-table td:nth-child(3),
+.tt-income-table th:nth-child(6),
+.tt-income-table td:nth-child(6),
+.tt-income-table th:nth-child(9),
+.tt-income-table td:nth-child(9) {
+  border-left: 1px solid var(--border);
+}
+
+/* Calculations card */
+.tt-income-calc th:first-child {
+  min-width: 220px;
+}
+
+.tt-income-calc tbody th {
+  white-space: nowrap;
+}
+
+.tt-income-calc .tt-infotip {
+  margin-left: 6px;
+}
+
+.tt-income-carry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.tt-income-carry legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Info tooltips open to the right of the icon so the table's scroll area can't clip them. The
+   wrapper's bottom padding (cancelled by a negative margin) gives the last rows' tips room. */
+.tt-income-calc-scroll {
+  overflow-x: auto;
+  padding-bottom: 72px;
+  margin-bottom: -72px;
+}
+
+.tt-income-calc-frame {
+  width: max-content;
+  min-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tt-income-calc .tt-infotip:hover::after,
+.tt-income-calc .tt-infotip:focus-visible::after {
+  top: 50%;
+  left: calc(100% + 8px);
+  width: 260px;
+  transform: translateY(-50%);
+  white-space: normal;
+  text-align: left;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The frozen label cells are positioned (z-index 1), so a later row's label would paint over an
+   earlier row's tooltip. Lift the hovered or focused label above all of them. */
+.tt-income-calc tbody th:hover,
+.tt-income-calc tbody th:focus-within {
+  z-index: 5;
+}
+
+.tt-income-strong th,
+.tt-income-strong td {
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+}

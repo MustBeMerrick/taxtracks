@@ -60,11 +60,11 @@ export function Kpis({ model }: { model: OverviewModel }) {
 
       <article className="tt-kpi">
         <header>
-          <span>{income.excludesJointIncome ? 'Wage income' : 'Total income'}</span>
+          <span>{income.excludesJointIncome ? 'Personal income' : 'Total income'}</span>
           <InfoTip
             text={
               income.excludesJointIncome
-                ? 'W-2 wages (gross less pre-tax deductions) attributable to this taxpayer. Joint investment income is excluded.'
+                ? 'W-2 wages plus this person’s brokerage results and dividends. Joint other income is excluded.'
                 : 'W-2 wages (gross less pre-tax deductions) + net short- and long-term gains/losses + dividends & interest + other income, before capital-loss limits.'
             }
           />

@@ -6,10 +6,11 @@ import { formatNumberInput } from '@/lib/core/withholding/form'
  * caret before the same trailing digits/decimal point (counting from the end is robust to commas and an
  * auto-added leading zero).
  */
-export function handleNumericChange(e: ChangeEvent<HTMLInputElement>, setValue: (formatted: string) => void, maxDecimals?: number) {
+export function handleNumericChange(e: ChangeEvent<HTMLInputElement>, setValue: (formatted: string) => void, maxDecimals?: number, allowNegative = false) {
   const input = e.target
   const charsAfterCaret = input.value.slice(input.selectionStart ?? input.value.length).replace(/[^\d.]/g, '').length
-  const formatted = formatNumberInput(input.value, maxDecimals)
+  const negative = allowNegative && input.value.trim().startsWith('-')
+  const formatted = (negative ? '-' : '') + formatNumberInput(input.value, maxDecimals)
   setValue(formatted)
   requestAnimationFrame(() => {
     let seen = 0

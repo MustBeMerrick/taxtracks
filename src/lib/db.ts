@@ -101,6 +101,43 @@ const MIGRATIONS: ((db: DatabaseSync) => void)[] = [
       return adjustForWeekend(original ?? record.payDate)
     })
   },
+
+  // 4: brokerage rows now belong to a person and carry a brokerage key. The bundled sample's rows
+  // ("inv-betterment" etc.) get an owner so the Income page finds them; real data is never touched.
+  (db) => {
+    const sample = (db.prepare('SELECT data FROM households').all() as { data: string }[]).some((h) => JSON.parse(h.data).isSample === true)
+    if (!sample) return
+    const owners: Record<string, string> = { betterment: 'marc', robinhood: 'marc', fundrise: 'marc', vanguard: 'mae', wealthfront: 'mae' }
+    const update = db.prepare('UPDATE investment_summaries SET data = ? WHERE id = ?')
+    for (const row of db.prepare('SELECT id, data FROM investment_summaries').all() as { id: string; data: string }[]) {
+      const record = JSON.parse(row.data) as { name: string; owner?: string; brokerage?: string }
+      if (record.owner) continue
+      const brokerage = record.name.toLowerCase()
+      update.run(JSON.stringify({ ...record, brokerage, owner: owners[brokerage] ?? 'marc' }), row.id)
+    }
+  },
+
+  // 5: migration 4 gave legacy sample rows an owner after the Income page had already saved fresh
+  // rows for the same person and brokerage, leaving two rows each that were both summed. Keep the
+  // most recently edited row per (year, owner, brokerage) and drop the older copies.
+  (db) => {
+    const rows = db.prepare('SELECT id, data, updated_at FROM investment_summaries ORDER BY rowid').all() as { id: string; data: string; updated_at: string }[]
+    const keep = new Map<string, { id: string; updatedAt: string }>()
+    const drop: string[] = []
+    for (const row of rows) {
+      const record = JSON.parse(row.data) as { taxYear: number; owner?: string; brokerage?: string }
+      if (!record.owner || !record.brokerage) continue
+      const key = `${record.taxYear}|${record.owner}|${record.brokerage}`
+      const current = keep.get(key)
+      if (!current) keep.set(key, { id: row.id, updatedAt: row.updated_at })
+      else if (row.updated_at >= current.updatedAt) {
+        drop.push(current.id)
+        keep.set(key, { id: row.id, updatedAt: row.updated_at })
+      } else drop.push(row.id)
+    }
+    const remove = db.prepare('DELETE FROM investment_summaries WHERE id = ?')
+    for (const id of drop) remove.run(id)
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length
