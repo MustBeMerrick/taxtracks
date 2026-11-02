@@ -8,7 +8,7 @@ import type {
   Provenance,
   Taxpayer,
 } from '@/lib/core/types'
-import { ratio, sum, sumBy, type Cents } from '@/lib/core/money'
+import { applyRate, ratio, sum, sumBy, type Cents } from '@/lib/core/money'
 
 /*
  * Derives every Overview figure from canonical records (spec §5: derived
@@ -84,6 +84,8 @@ export interface InvestmentRow extends InvestmentSourceSummary {
 
 export interface OverviewModel {
   scope: Scope
+  /** 1 for the household; a person's fraction of household personal income, which scales liability. */
+  liabilityShare: number
   liability: ByJurisdiction
   liabilityStatus: Provenance
   payments: ByJurisdiction
@@ -144,18 +146,26 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   const scopedPayroll = household ? input.payroll : input.payroll.filter((r) => r.taxpayerId === scope)
   // Brokerage results belong to one person; rows without an owner are legacy joint rows (household only).
   const scopedInvestments = household ? input.investments : input.investments.filter((i) => i.owner === scope)
-  const actualPayroll = input.payroll.filter((r) => r.status === 'actual')
 
-  // Liability and payments are joint under MFJ, so they never narrow by scope (spec §3).
-  const liabilityFor = (j: Jurisdiction) => sumBy(input.liabilities.filter((l) => l.jurisdiction === j), (l) => l.amount)
+  // The household files jointly, so liability is computed once for the household. A person's view shows their
+  // share of it, proportional to their share of the household's personal income (wages + brokerage results).
+  // Payments follow the person: only their own paychecks' withholding counts against their share.
+  const personalIncome = (id: string) =>
+    sumBy(input.payroll.filter((r) => r.taxpayerId === id), (r) => r.gross - r.preTax) +
+    sumBy(input.investments.filter((i) => i.owner === id), (i) => i.shortTerm + i.longTerm + i.dividendsInterest)
+  const everyoneIncome = sumBy(input.taxpayers, (t) => personalIncome(t.id))
+  const liabilityShare = household ? 1 : everyoneIncome > 0 ? Math.min(1, Math.max(0, personalIncome(scope) / everyoneIncome)) : 0
+  const liabilityFor = (j: Jurisdiction) =>
+    applyRate(sumBy(input.liabilities.filter((l) => l.jurisdiction === j), (l) => l.amount), liabilityShare)
   const liability = byJurisdiction(liabilityFor('federal'), liabilityFor('ca'))
+  const scopedActualPayroll = scopedPayroll.filter((r) => r.status === 'actual')
   const payments = byJurisdiction(
-    sumBy(input.payroll, (r) => r.federalWithholding),
-    sumBy(input.payroll, (r) => r.caWithholding),
+    sumBy(scopedPayroll, (r) => r.federalWithholding),
+    sumBy(scopedPayroll, (r) => r.caWithholding),
   )
   const paymentsActual = byJurisdiction(
-    sumBy(actualPayroll, (r) => r.federalWithholding),
-    sumBy(actualPayroll, (r) => r.caWithholding),
+    sumBy(scopedActualPayroll, (r) => r.federalWithholding),
+    sumBy(scopedActualPayroll, (r) => r.caWithholding),
   )
   const refund = byJurisdiction(payments.federal - liability.federal, payments.ca - liability.ca)
 
@@ -183,12 +193,11 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
     })
   }
   const incomeTotal = sumBy(components, (c) => c.amount)
-  const householdIncome = household ? incomeTotal : buildOverview(input, 'household').income.total
 
   // Monthly withholding, cumulative.
   let running = 0
   const monthly: MonthPoint[] = MONTHS.map((month, i) => {
-    const records = input.payroll.filter((r) => Number(r.payDate.slice(5, 7)) === i + 1)
+    const records = scopedPayroll.filter((r) => Number(r.payDate.slice(5, 7)) === i + 1)
     const federal = sumBy(records, (r) => r.federalWithholding)
     const ca = sumBy(records, (r) => r.caWithholding)
     running += federal + ca
@@ -221,6 +230,7 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
 
   return {
     scope,
+    liabilityShare,
     liability,
     liabilityStatus: combinedStatus(input.liabilities.map((l) => l.status)) === 'actual' ? 'actual' : 'manual_estimate',
     payments,
@@ -228,9 +238,9 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
     refund,
     income: { components, total: incomeTotal, excludesJointIncome: !household },
     effectiveRates: {
-      federal: ratio(liability.federal, householdIncome),
-      ca: ratio(liability.ca, householdIncome),
-      combined: ratio(liability.total, householdIncome),
+      federal: ratio(liability.federal, incomeTotal),
+      ca: ratio(liability.ca, incomeTotal),
+      combined: ratio(liability.total, incomeTotal),
     },
     monthly,
     lastActualMonth: lastActual?.month ?? null,

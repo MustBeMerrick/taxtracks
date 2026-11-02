@@ -39,13 +39,31 @@ describe('overview model (spec §5 invariants)', () => {
     expect(total!.fullYear.federal).toBe(household.payments.federal)
   })
 
-  it('individual scope filters attributable data but keeps joint liability', () => {
+  it("individual scope filters attributable data and scales liability by the person's income share", () => {
     const marc = buildOverview(sample, 'marc')
-    expect(marc.liability).toEqual(household.liability)
-    expect(marc.refund).toEqual(household.refund)
+    const mae = buildOverview(sample, 'mae')
+    expect(household.liabilityShare).toBe(1)
+    // Shares add up to the whole, and so do the scaled liabilities (to within a cent of rounding).
+    expect(marc.liabilityShare + mae.liabilityShare).toBeCloseTo(1, 10)
+    expect(Math.abs(marc.liability.total + mae.liability.total - household.liability.total)).toBeLessThanOrEqual(2)
+    expect(marc.liability.federal).toBe(Math.round(household.liability.federal * marc.liabilityShare))
+    // Payments follow the person's own paychecks, so refunds add up too.
+    expect(marc.payments.total + mae.payments.total).toBe(household.payments.total)
+    expect(Math.abs(marc.refund.total + mae.refund.total - household.refund.total)).toBeLessThanOrEqual(2)
     expect(marc.paychecks.rows.map((r) => r.taxpayerId)).toEqual(['marc'])
     // Brokerage results are per person; only joint "other income" stays household-only.
     expect(marc.income.components.map((c) => c.key)).toEqual(['wages', 'shortTerm', 'longTerm', 'dividendsInterest'])
-    expect(marc.effectiveRates).toEqual(household.effectiveRates)
+  })
+
+  it("a person's monthly chart counts only their own paychecks, so actual/projected follows them", () => {
+    const marc = buildOverview(sample, 'marc')
+    expect(marc.monthly.at(-1)!.cumulative).toBe(marc.payments.total)
+    const mae = buildOverview(sample, 'mae')
+    expect(marc.monthly.at(-1)!.cumulative + mae.monthly.at(-1)!.cumulative).toBe(household.monthly.at(-1)!.cumulative)
+  })
+
+  it('effective rates are the same for a person as for the household when liability scales with income', () => {
+    const marc = buildOverview(sample, 'marc')
+    expect(marc.effectiveRates.combined).toBeCloseTo(buildOverview(sample, 'household').effectiveRates.combined, 3)
   })
 })

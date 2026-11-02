@@ -9,6 +9,7 @@ import { Kpis } from '@/components/overview/Kpis'
 import { FederalVsState, InvestmentTable, PaycheckSummary, RecentActivity, WithholdingProgress } from '@/components/overview/Panels'
 import { PaymentsChart } from '@/components/overview/PaymentsChart'
 import { Card } from '@/components/ui/Card'
+import { formatPercent } from '@/lib/core/money'
 import { buildOverview, type OverviewInput } from '@/lib/core/overview'
 import '@/components/overview/overview.css'
 
@@ -46,7 +47,7 @@ export function OverviewView({ data }: { data: OverviewInput }) {
       {scope !== 'household' && (
         <p className="tt-scope-banner" role="note">
           <Users size={16} aria-hidden="true" />
-          Viewing {scopeLabel}: income and payroll are filtered to {scopeLabel}. Liability, payments and refund remain joint (Married Filing Jointly).
+          Viewing {scopeLabel}: income, paychecks and withholding are {scopeLabel}’s. Liability is {scopeLabel}’s {formatPercent(model.liabilityShare)} share of the joint estimate, proportional to income.
         </p>
       )}
       <Kpis model={model} />
