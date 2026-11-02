@@ -27,6 +27,7 @@ type MoneyKey =
   | 'dependentFsa'
   | 'hsa'
   | 'retirement401k'
+  | 'hospitalIndemnity'
   | 'gtli'
   | 'employerHsa'
 
@@ -34,6 +35,7 @@ interface FormState extends Record<MoneyKey, string> {
   payDate: string
   employer: string
   paidOut: boolean
+  bonus: boolean
   notes: string
 }
 
@@ -45,6 +47,7 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
     payDate: record?.payDate ?? defaultPayDate,
     employer: record?.employer ?? lastEmployer,
     paidOut: record ? record.status === 'actual' : false,
+    bonus: record?.bonus === true,
     notes: record?.notes ?? '',
     gross: dollars(record?.gross),
     federal: dollars(record?.federalWithholding),
@@ -57,6 +60,7 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
     vision: dollars(b.vision),
     healthcareFsa: dollars(b.healthcareFsa),
     dependentFsa: dollars(b.dependentFsa),
+    hospitalIndemnity: dollars(b.hospitalIndemnity),
     hsa: dollars(b.hsa),
     // Records that only carry a lump pre-tax total show it as 401(k)/other so nothing is silently dropped.
     retirement401k: dollars(record?.benefits ? b.retirement401k : record?.preTax),
@@ -67,7 +71,7 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
 
 const MONEY_KEYS: MoneyKey[] = [
   'gross', 'federal', 'socialSecurity', 'medicare', 'ca', 'sdi',
-  'medical', 'dental', 'vision', 'healthcareFsa', 'dependentFsa', 'hsa', 'retirement401k', 'gtli', 'employerHsa',
+  'medical', 'dental', 'vision', 'healthcareFsa', 'dependentFsa', 'hospitalIndemnity', 'hsa', 'retirement401k', 'gtli', 'employerHsa',
 ]
 
 export function PaystubDialog({
@@ -114,6 +118,7 @@ export function PaystubDialog({
     vision: value('vision'),
     healthcareFsa: value('healthcareFsa'),
     dependentFsa: value('dependentFsa'),
+    hospitalIndemnity: value('hospitalIndemnity'),
     hsa: value('hsa'),
     retirement401k: value('retirement401k'),
   }
@@ -132,6 +137,7 @@ export function PaystubDialog({
       employer: form.employer,
       payDate: form.payDate,
       paidOut: form.paidOut,
+      bonus: form.bonus,
       gross: value('gross'),
       benefits,
       gtli: value('gtli'),
@@ -234,6 +240,12 @@ export function PaystubDialog({
                 <strong>Paid Out</strong>: these numbers are final and reconciled with the actual stub
               </span>
             </label>
+            <label className="tt-calc-check">
+              <input type="checkbox" checked={form.bonus} onChange={(e) => set('bonus', e.target.checked)} />
+              <span>
+                <strong>Bonus</strong>: an extra paycheck on top of the regular one (can share its pay date)
+              </span>
+            </label>
           </fieldset>
 
           <fieldset className="tt-calc-group">
@@ -255,6 +267,7 @@ export function PaystubDialog({
               {field('vision', 'Vision')}
               {field('healthcareFsa', 'Healthcare FSA')}
               {field('dependentFsa', 'Dependent care FSA')}
+              {field('hospitalIndemnity', 'Hospital indemnity')}
               {field('hsa', 'Health savings (HSA)')}
               {field('retirement401k', '401(k) / 403(b)')}
             </div>

@@ -17,12 +17,13 @@ export const EMPTY_BENEFITS: PaystubBenefits = {
   dependentFsa: 0,
   hsa: 0,
   retirement401k: 0,
+  hospitalIndemnity: 0,
 }
 
 export const isPaidOut = (record: PayrollRecord) => record.status === 'actual'
 
 export function benefitsTotal(benefits: PaystubBenefits): Cents {
-  return sum(Object.values(benefits))
+  return sum(Object.values(benefits).map((v) => v ?? 0))
 }
 
 export const totalTaxes = (r: PayrollRecord): Cents =>
@@ -194,13 +195,16 @@ export function payrollWarnings(records: PayrollRecord[], today: string): Payrol
   }
 
   // Bookkeeping.
+  // Two regular paychecks on one date is probably a duplicate; a bonus paycheck legitimately shares a date.
   const seenDates = new Map<string, PayrollRecord>()
   for (const r of rows) {
-    const dup = seenDates.get(r.payDate)
-    if (dup) {
-      warnings.push({ id: `dup-${r.id}`, severity: 'warning', recordId: r.id, message: `Two paystubs are dated ${formatPayDate(r.payDate)}. Is one a duplicate?` })
+    if (!r.bonus) {
+      const dup = seenDates.get(r.payDate)
+      if (dup) {
+        warnings.push({ id: `dup-${r.id}`, severity: 'warning', recordId: r.id, message: `Two regular paystubs are dated ${formatPayDate(r.payDate)}. Is one a duplicate?` })
+      }
+      seenDates.set(r.payDate, r)
     }
-    seenDates.set(r.payDate, r)
 
     if (netPay(r) < 0) {
       warnings.push({ id: `neg-net-${r.id}`, severity: 'error', recordId: r.id, message: `The ${formatPayDate(r.payDate)} paystub has negative net pay (${formatMoney(netPay(r))}); deductions and taxes exceed gross.` })

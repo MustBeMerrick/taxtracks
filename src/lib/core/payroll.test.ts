@@ -127,6 +127,13 @@ describe('warnings', () => {
     expect(ids).toContain('unpaid-past-d')
   })
 
+  it('does not flag a bonus sharing a date with a regular paycheck, but still flags two regular ones', () => {
+    const w = payrollWarnings([stub('a', '2026-03-13'), stub('b', '2026-03-13', { bonus: true }), stub('c', '2026-03-31'), stub('d', '2026-03-31')], today)
+    const ids = w.map((x) => x.id)
+    expect(ids).not.toContain('dup-b')
+    expect(ids).toContain('dup-d')
+  })
+
   it('skips limit checks (with a note) for a year without rules', () => {
     const w = payrollWarnings([stub('a', '2030-01-15', { taxYear: 2030 })], '2030-02-01')
     expect(w.map((x) => x.id)).toContain('no-rules')

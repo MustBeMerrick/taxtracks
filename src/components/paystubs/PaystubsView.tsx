@@ -196,7 +196,10 @@ function PersonLedger({
                 const flagged = warningsByRecord.get(record.id)?.some((w) => w.severity !== 'info')
                 return (
                   <tr key={record.id} className={paid ? '' : 'tt-stubs-pending'} data-flagged={flagged ? 'true' : undefined}>
-                    <th scope="row">{formatPayDate(record.payDate)}</th>
+                    <th scope="row">
+                      {formatPayDate(record.payDate)}
+                      {record.bonus && <span className="tt-stubs-badge">Bonus</span>}
+                    </th>
                     <td className="tt-stubs-center-col">
                       <label className="tt-stubs-paid">
                         <input

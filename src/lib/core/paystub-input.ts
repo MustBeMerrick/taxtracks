@@ -10,6 +10,8 @@ export interface PaystubInput {
   employer: string
   payDate: IsoDate
   paidOut: boolean
+  /** An extra bonus paycheck rather than a regular one. */
+  bonus?: boolean
   gross: Cents
   benefits: PaystubBenefits
   gtli: Cents
@@ -44,7 +46,7 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
     input.caSdi,
     ...Object.values(input.benefits ?? {}),
   ]
-  if (!amounts.every(isCents) || Object.keys(input.benefits ?? {}).length !== 7) return { ok: false, error: 'Amounts must be zero or more.' }
+  if (!amounts.every(isCents) || Object.keys(input.benefits ?? {}).length !== 8) return { ok: false, error: 'Amounts must be zero or more.' }
   if (input.gross <= 0) return { ok: false, error: 'Enter the gross pay.' }
 
   const preTax = benefitsTotal(input.benefits)
@@ -57,6 +59,7 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
       taxpayerId: input.taxpayerId,
       employer: input.employer.trim(),
       payDate: input.payDate,
+      bonus: input.bonus === true,
       status: input.paidOut ? 'actual' : 'projected',
       gross: input.gross,
       preTax,

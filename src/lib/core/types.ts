@@ -57,6 +57,8 @@ export interface PayrollRecord extends RecordMeta {
   taxpayerId: string
   employer: string
   payDate: IsoDate
+  /** An extra paycheck on top of the regular ones (annual bonus); it may share a pay date with a regular paycheck. */
+  bonus?: boolean
   status: Provenance
   gross: Cents
   /** Pre-tax HSA + 401(k) + other pre-tax deductions. Equals the sum of `benefits` when that is present. */
@@ -83,15 +85,26 @@ export interface PaystubBenefits {
   dependentFsa: Cents
   hsa: Cents
   retirement401k: Cents
+  /** Voluntary hospital indemnity premium; absent on older records. */
+  hospitalIndemnity?: Cents
 }
 
 /** Per-source investment totals until transaction-level ledgers exist. */
 export interface InvestmentSourceSummary extends RecordMeta {
   taxYear: number
   name: string
-  /** Signed: gains positive, losses negative (spec §5 invariants). */
+  /** Taxpayer id who holds the account; absent on legacy rows (treated as joint). */
+  owner?: string
+  /** Key into BROKERAGES (src/lib/core/investments.ts). */
+  brokerage?: string
+  /** Net, signed: gains positive, losses negative (spec §5 invariants). Always profit − loss when those are present. */
   shortTerm: Cents
   longTerm: Cents
+  /** The gross sides as entered on the Income page (both non-negative); absent on rows that only carry a net. */
+  shortTermProfit?: Cents
+  shortTermLoss?: Cents
+  longTermProfit?: Cents
+  longTermLoss?: Cents
   dividendsInterest: Cents
   status: Provenance
 }

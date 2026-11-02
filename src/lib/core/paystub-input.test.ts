@@ -27,6 +27,13 @@ describe('validatePaystub', () => {
     expect(unpaid.ok && unpaid.fields.status).toBe('projected')
   })
 
+  it('records the bonus flag, and clears it when unchecked', () => {
+    const bonus = validatePaystub({ ...good, bonus: true }, ['marc'], [2026])
+    expect(bonus.ok && bonus.fields.bonus).toBe(true)
+    const regular = validatePaystub(good, ['marc'], [2026])
+    expect(regular.ok && regular.fields.bonus).toBe(false)
+  })
+
   it.each([
     ['unknown person', { taxpayerId: 'x' }],
     ['bad date', { payDate: '2026-13-45' }],

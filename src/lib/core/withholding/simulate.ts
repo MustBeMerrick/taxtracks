@@ -68,6 +68,7 @@ export function simulateWithholding(
       dependentFsa: b.dependentFsa,
       hsa: b.hsa,
       retirement401k: b.retirementPreTax,
+      hospitalIndemnity: 0,
     },
     preTax: b.medical + b.dental + b.vision + b.healthcareFsa + b.dependentFsa + b.hsa + b.retirementPreTax,
     gtli: b.gtliImputed,

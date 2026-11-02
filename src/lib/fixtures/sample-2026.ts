@@ -64,6 +64,7 @@ interface Paycheck {
   preTax: Cents
   federal: Cents
   ca: Cents
+  bonus?: boolean
 }
 
 /** Adds payroll-tax lines with running YTD wage bases. */
@@ -79,6 +80,7 @@ function buildRecords(taxpayerId: string, employer: string, checks: Paycheck[]):
       taxpayerId,
       employer,
       payDate: c.payDate,
+      ...(c.bonus ? { bonus: true } : {}),
       status: c.payDate <= LAST_RECORDED_PAY_DATE ? 'actual' : 'projected',
       gross: c.gross,
       preTax: c.preTax,
@@ -106,7 +108,7 @@ const maeChecks: Paycheck[] = dates.flatMap((payDate) => {
   if (payDate !== dates[4]) return [regular] // the mid-March paycheck
   // Annual bonus paid with the mid-March check, supplemental-rate withholding.
   const bonus = cents(38_216.77)
-  return [regular, { payDate, gross: bonus, preTax: 0, federal: applyRate(bonus, 0.22), ca: applyRate(bonus, 0.1023) }]
+  return [regular, { payDate, bonus: true, gross: bonus, preTax: 0, federal: applyRate(bonus, 0.22), ca: applyRate(bonus, 0.1023) }]
 })
 
 export const payroll: PayrollRecord[] = [
@@ -114,10 +116,12 @@ export const payroll: PayrollRecord[] = [
   ...buildRecords('mae', 'Contoso Health', maeChecks),
 ]
 
-const investment = (id: string, name: string, st: number, lt: number, divInt: number, status: InvestmentSourceSummary['status']): InvestmentSourceSummary => ({
-  ...meta(`inv-${id}`),
+const investment = (id: string, name: string, owner: string, st: number, lt: number, divInt: number, status: InvestmentSourceSummary['status']): InvestmentSourceSummary => ({
+  ...meta(`inv-${SAMPLE_YEAR}-${owner}-${id}`),
   taxYear: SAMPLE_YEAR,
   name,
+  owner,
+  brokerage: id,
   shortTerm: cents(st),
   longTerm: cents(lt),
   dividendsInterest: cents(divInt),
@@ -125,11 +129,11 @@ const investment = (id: string, name: string, st: number, lt: number, divInt: nu
 })
 
 export const investments: InvestmentSourceSummary[] = [
-  investment('betterment', 'Betterment', -142, 2_160, 3_400, 'manual_estimate'),
-  investment('vanguard', 'Vanguard', 73, 1_100, 200, 'manual_estimate'),
-  investment('robinhood', 'Robinhood', -10_465, 0, 0, 'actual'),
-  investment('wealthfront', 'Wealthfront', 0, -41, 750, 'manual_estimate'),
-  investment('fundrise', 'Fundrise', 0, 212, 525, 'manual_estimate'),
+  investment('betterment', 'Betterment', 'marc', -142, 2_160, 3_400, 'manual_estimate'),
+  investment('vanguard', 'Vanguard', 'mae', 73, 1_100, 200, 'manual_estimate'),
+  investment('robinhood', 'Robinhood', 'marc', -10_465, 0, 0, 'actual'),
+  investment('wealthfront', 'Wealthfront', 'mae', 0, -41, 750, 'manual_estimate'),
+  investment('fundrise', 'Fundrise', 'marc', 0, 212, 525, 'manual_estimate'),
 ]
 
 export const otherIncome: OtherIncome[] = [
