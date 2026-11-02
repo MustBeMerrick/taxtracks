@@ -121,7 +121,7 @@ export class TaxDataRepository {
     const taxpayers = this.all('taxpayers')
     const payroll = this.all('payroll', year).sort((a, b) => a.payDate.localeCompare(b.payDate))
     const investments = this.all('investmentSummaries', year)
-    // Liability comes from the tax engine whenever the year and filing status have verified tables;
+    // Liability comes from the tax engine (stamped with a fixed date so input hashes stay reproducible) whenever the year and filing status have verified tables;
     // otherwise whatever was stored (hand-entered placeholders) is used.
     const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
     const computed = filingStatus
@@ -133,7 +133,7 @@ export class TaxDataRepository {
       payroll,
       investments,
       otherIncome: this.all('otherIncome', year),
-      liabilities: computed ? estimatedLiabilities(year, computed.estimate, nowIso()) : this.all('liabilities', year),
+      liabilities: computed ? estimatedLiabilities(year, computed.estimate, `${year}-01-01T00:00:00.000Z`) : this.all('liabilities', year),
       activity: this.all('activity'),
     }
   }

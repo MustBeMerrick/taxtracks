@@ -33,6 +33,28 @@ const household: IncomeSummaryInput = {
   carryoverLong: 0,
 }
 
+describe('California schedule', () => {
+  it('uses the statutory rates (the EDD withholding table is 110% of them)', () => {
+    const rows = getIncomeRules(2026)!.californiaRates.mfj!
+    expect(rows.map((r) => r.rate)).toEqual([0.01, 0.02, 0.04, 0.06, 0.08, 0.093, 0.103, 0.113, 0.123, 0.133])
+    // Each base is the tax on all lower brackets, so the schedule is continuous.
+    for (let i = 1; i < rows.length; i++) {
+      const lower = rows[i - 1]
+      expect(Math.abs(rows[i].base - (lower.base + lower.rate * (rows[i].over - lower.over)))).toBeLessThan(0.1)
+    }
+  })
+
+  it('taxes joint income in the 9.3% bracket at the real rate', () => {
+    const s = calculateIncomeSummary(2026, household)!
+    const e = estimateTax({ taxYear: 2026, filingStatus: 'mfj', summary: s, dividends: 0, medicareWages: [] })!
+    // The $145,448–$742,958 married bracket: base 7,044.33/1.1 = 6,404.03, rate 10.23%/1.1 = 9.3%.
+    expect(s.stateTaxable).toBeGreaterThan(cents(145_448))
+    expect(s.stateTaxable).toBeLessThan(cents(742_958))
+    const expected = 6_404.03 + 0.093 * (s.stateTaxable / 100 - 145_448)
+    expect(Math.abs(e.california.tax - cents(expected))).toBeLessThan(cents(1))
+  })
+})
+
 describe('estimateTax', () => {
   const summary = calculateIncomeSummary(2026, household)!
   const est = estimateTax({ taxYear: 2026, filingStatus: 'mfj', summary, dividends: cents(5_375), medicareWages: [cents(207_000), cents(170_000)] })!
@@ -55,8 +77,8 @@ describe('estimateTax', () => {
 
   it('sums federal and subtracts the exemption credit in California', () => {
     expect(est.federal.total).toBe(est.federal.ordinaryTax + est.federal.capitalGainsTax + est.federal.niit + est.federal.additionalMedicare)
-    expect(est.california.exemptionCredit).toBe(cents(336.6))
-    expect(est.california.total).toBe(est.california.tax - cents(336.6))
+    expect(est.california.exemptionCredit).toBe(cents(306))
+    expect(est.california.total).toBe(est.california.tax - cents(306))
     expect(est.california.tax).toBeGreaterThan(0)
   })
 

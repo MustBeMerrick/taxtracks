@@ -22,8 +22,8 @@ The boilerplate is complete and live. Built in four phases, each reviewed by Mar
 with the password. Not yet done on the server: passkeys registered, sample
 data cleared.
 
-**Placeholders:** Liabilities are
-hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engine output.
+**Liabilities** are
+engine output for supported years (federal single/MFJ/MFS; California via the EDD 2026 schedule at statutory rates); other years fall back to stored values.
 
 ## Next up — where to pick up
 
@@ -47,8 +47,10 @@ hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engi
 Reports was removed (2026-11-01). **Tax Engine** (`/tax-engine`) is back, holding the income
 Calculations card (`src/lib/core/income-summary.ts`, reproduces Marc's spreadsheet to the cent):
 salary + brokerage results → ordinary income, LTCG, capital-loss limit, standard deductions,
-taxable income. Next: brackets, LTCG rates and NIIT to replace the placeholder liabilities
-(Overview/Calculators still use those, labelled as estimates).
+taxable income. The Estimated tax card (`tax-liability.ts`) adds bracket tax, LTCG, NIIT and
+Additional Medicare; the Overview reads it. Not modeled: itemized deductions, credits, AMT,
+qualified dividends, estimated payments. The EDD's California withholding rates are 110% of the
+statutory rates, so the engine divides them by 1.1.
 
 Small open items:
 - Fail fast at startup when `AUTH_SESSION_SECRET` / `AUTH_PASSWORD_HASH` is empty

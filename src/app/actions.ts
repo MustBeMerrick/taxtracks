@@ -16,7 +16,7 @@ import { hashInputs } from '@/lib/repository'
 // Every action re-checks the session: actions are reachable by direct POST.
 // Callers await the action, then call scheduleRefresh() (see lib/refresh-context.tsx).
 
-const RULES_VERSION = 'placeholder-liabilities'
+const RULES_VERSION = 'tax-engine-2026-estimate'
 
 export async function selectTaxYear(year: number): Promise<void> {
   await requireSession()

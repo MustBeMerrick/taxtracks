@@ -40,7 +40,18 @@ const MFJ_BRACKETS = bracketsFrom([[0, 0.1], [24_800, 0.12], [100_800, 0.22], [2
 const SINGLE_BRACKETS = bracketsFrom([[0, 0.1], [12_400, 0.12], [50_400, 0.22], [105_700, 0.24], [201_775, 0.32], [256_225, 0.35], [640_600, 0.37]])
 const MFS_BRACKETS = bracketsFrom([[0, 0.1], [12_400, 0.12], [50_400, 0.22], [105_700, 0.24], [201_775, 0.32], [256_225, 0.35], [384_350, 0.37]])
 
-const caRows = (key: 'single' | 'married'): CaRateRow[] => CA_RATE_TABLES_2026.annual[key].map((r) => ({ ...r }))
+/**
+ * The EDD's withholding tables use 110% of California's statutory rates (1.1%, 2.2% … 14.63% instead of
+ * 1%, 2% … 13.3%) so that withholding runs a little high. Liability uses the statutory rates, so divide
+ * the EDD rates and base amounts by 1.1. Bracket thresholds are the EDD's 2026 indexed figures.
+ */
+const EDD_WITHHOLDING_FACTOR = 1.1
+const caRows = (key: 'single' | 'married'): CaRateRow[] =>
+  CA_RATE_TABLES_2026.annual[key].map((r) => ({
+    over: r.over,
+    rate: Math.round((r.rate / EDD_WITHHOLDING_FACTOR) * 10_000) / 10_000,
+    base: Math.round((r.base / EDD_WITHHOLDING_FACTOR) * 100) / 100,
+  }))
 
 const RULES_2026: IncomeRules = {
   federalStandardDeduction: {
@@ -76,10 +87,10 @@ const RULES_2026: IncomeRules = {
   niitThreshold: { single: cents(200_000), mfj: cents(250_000), mfs: cents(125_000), hoh: cents(200_000), qss: cents(250_000) },
   additionalMedicareRate: 0.009,
   additionalMedicareThreshold: { single: cents(200_000), mfj: cents(250_000), mfs: cents(125_000), hoh: cents(200_000), qss: cents(250_000) },
-  // California's own 2026 schedule isn't published yet; this is the EDD's 2026 annual schedule (Method B Tables 5-28).
+  // California's own 2026 schedule isn't published yet; thresholds are the EDD's 2026 annual schedule (Method B Tables 5-28), at statutory rates.
   californiaRates: { single: caRows('single'), mfs: caRows('single'), mfj: caRows('married'), qss: caRows('married') },
-  // EDD 2026 Method B Table 4, annual, per allowance ($168.30); joint filers get two.
-  californiaExemptionCredit: { single: cents(168.3), mfj: cents(336.6), mfs: cents(168.3), hoh: cents(168.3), qss: cents(336.6) },
+  // EDD 2026 Method B Table 4 is $168.30 per allowance, also at 110%: the credit itself is $153. Joint filers get two.
+  californiaExemptionCredit: { single: cents(153), mfj: cents(306), mfs: cents(153), hoh: cents(153), qss: cents(306) },
 }
 
 const RULES_BY_YEAR: Record<number, IncomeRules> = { 2026: RULES_2026 }
