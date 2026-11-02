@@ -165,7 +165,7 @@ function PersonLedger({
             <tbody>
               <tr className="tt-stubs-total-row">
                 <th scope="row" colSpan={2}>
-                  Paid Out total
+                  YTD
                 </th>
                 <Money value={summary.paid.gross} />
                 <Money value={summary.paid.preTax} />

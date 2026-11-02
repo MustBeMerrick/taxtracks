@@ -6,6 +6,8 @@ import type { FilingStatus } from '@/lib/core/filing-status'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { buildOverview } from '@/lib/core/overview'
 import type { Cents } from '@/lib/core/money'
+import { benefitsTotal } from '@/lib/core/payroll'
+import type { PaystubBenefits } from '@/lib/core/types'
 import { validatePaystub, type PaystubInput } from '@/lib/core/paystub-input'
 import { getRepository, YEAR_COOKIE } from '@/lib/data'
 import { hashInputs } from '@/lib/repository'
@@ -122,6 +124,10 @@ export interface SimulatedWithholdingUpdate {
   socialSecurity: Cents
   medicare: Cents
   caSdi: Cents
+  benefits: PaystubBenefits
+  preTax: Cents
+  gtli: Cents
+  employerHsa: Cents
 }
 
 const isCents = (n: unknown): n is Cents => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0
@@ -132,7 +138,8 @@ export async function commitWithholdingSimulation(updates: SimulatedWithholdingU
   const repository = getRepository()
   let applied = 0
   for (const u of updates) {
-    if (![u.federalWithholding, u.caWithholding, u.socialSecurity, u.medicare, u.caSdi].every(isCents)) {
+    const lines = [u.federalWithholding, u.caWithholding, u.socialSecurity, u.medicare, u.caSdi, u.preTax, u.gtli, u.employerHsa, ...Object.values(u.benefits ?? {})]
+    if (!lines.every(isCents) || benefitsTotal(u.benefits) !== u.preTax) {
       return { ok: false, message: 'Amounts must be zero or more.' }
     }
     const existing = repository.get('payroll', u.id)
@@ -145,6 +152,10 @@ export async function commitWithholdingSimulation(updates: SimulatedWithholdingU
       socialSecurity: u.socialSecurity,
       medicare: u.medicare,
       caSdi: u.caSdi,
+      benefits: u.benefits,
+      preTax: u.preTax,
+      gtli: u.gtli,
+      employerHsa: u.employerHsa,
     })
     applied += 1
   }

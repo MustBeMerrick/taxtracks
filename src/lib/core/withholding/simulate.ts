@@ -1,6 +1,6 @@
 import { sum, type Cents } from '../money'
 import { EMPTY_BENEFITS, isPaidOut, netPay, sortPaystubs } from '../payroll'
-import type { PayrollRecord } from '../types'
+import type { PayrollRecord, PaystubBenefits } from '../types'
 import { calculateSalaryPaycheck } from './calculate'
 import type { SalaryPaycheckInput } from './types'
 
@@ -27,10 +27,18 @@ export interface SimulatedAmounts {
   net: Cents
 }
 
+/** The benefit lines a committed simulation stamps on a paycheck, so stored net pay matches the preview. */
+export interface SimulatedBenefits {
+  benefits: PaystubBenefits
+  preTax: Cents
+  gtli: Cents
+  employerHsa: Cents
+}
+
 export interface SimulatedPaycheck {
   record: PayrollRecord
   current: SimulatedAmounts
-  simulated: SimulatedAmounts
+  simulated: SimulatedAmounts & SimulatedBenefits
 }
 
 export interface WithholdingSimulation {
@@ -49,6 +57,22 @@ export function simulateWithholding(
 ): WithholdingSimulation {
   const sorted = sortPaystubs(records)
   let ytdFicaWages = sum(sorted.filter(isPaidOut).map(storedFicaWages))
+
+  const b = election.benefits
+  const benefitLines: SimulatedBenefits = {
+    benefits: {
+      medical: b.medical,
+      dental: b.dental,
+      vision: b.vision,
+      healthcareFsa: b.healthcareFsa,
+      dependentFsa: b.dependentFsa,
+      hsa: b.hsa,
+      retirement401k: b.retirementPreTax,
+    },
+    preTax: b.medical + b.dental + b.vision + b.healthcareFsa + b.dependentFsa + b.hsa + b.retirementPreTax,
+    gtli: b.gtliImputed,
+    employerHsa: b.hsaEmployer,
+  }
 
   const paychecks: SimulatedPaycheck[] = []
   for (const record of sorted) {
@@ -78,6 +102,7 @@ export function simulateWithholding(
         medicare: result.withholding.medicare + result.withholding.additionalMedicare,
         sdi: result.withholding.californiaSdi,
         net: result.netPay,
+        ...benefitLines,
       },
     })
     ytdFicaWages += result.wages.fica

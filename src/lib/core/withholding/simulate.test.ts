@@ -83,3 +83,16 @@ describe('simulateWithholding', () => {
     expect(sim.current.ca).toBe(cents(222) + records[1].caWithholding)
   })
 })
+
+describe('simulateWithholding benefit lines', () => {
+  it('carries the election benefits so stored net pay matches the preview', () => {
+    const e = election({ benefits: { ...NO_BENEFITS, medical: cents(30), retirementPreTax: cents(100), gtliImputed: cents(6.7), hsaEmployer: cents(50) } })
+    const [p] = simulateWithholding([stub('a', '2026-11-13')], e, 2026).paychecks
+    expect(p.simulated.preTax).toBe(cents(130))
+    expect(p.simulated.benefits.retirement401k).toBe(cents(100))
+    expect(p.simulated.gtli).toBe(cents(6.7))
+    expect(p.simulated.employerHsa).toBe(cents(50))
+    const stored = { ...p.record, ...p.simulated, federalWithholding: p.simulated.federal, caWithholding: p.simulated.ca, caSdi: p.simulated.sdi }
+    expect(stored.gross - stored.preTax - stored.federalWithholding - stored.caWithholding - stored.socialSecurity - stored.medicare - stored.caSdi).toBe(p.simulated.net)
+  })
+})

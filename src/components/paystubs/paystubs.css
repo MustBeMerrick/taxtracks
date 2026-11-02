@@ -1,6 +1,13 @@
 .tt-stubs {
   display: grid;
+  justify-items: start;
   gap: var(--space-4);
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Person cards shrink to their table instead of spanning the page. */
+.tt-stubs > * {
   max-width: 100%;
   min-width: 0;
 }
@@ -46,6 +53,8 @@
 }
 
 .tt-stubs-scroll {
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: auto;
   max-height: 60vh;
@@ -54,7 +63,7 @@
 }
 
 .tt-stubs-table {
-  width: 100%;
+  width: max-content;
   border-collapse: collapse;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -63,7 +72,7 @@
 
 .tt-stubs-table th,
 .tt-stubs-table td {
-  padding: 8px 10px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
   text-align: right;
 }

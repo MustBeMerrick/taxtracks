@@ -100,7 +100,7 @@ export function PaystubDialog({
     if (el && !el.open) el.showModal()
   }, [])
 
-  const set =<K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
 
   // Parse everything; field errors only show after the first submit attempt.
   const cents: Record<MoneyKey, number | null> = Object.fromEntries(MONEY_KEYS.map((k) => [k, parseMoney(form[k])])) as Record<MoneyKey, number | null>

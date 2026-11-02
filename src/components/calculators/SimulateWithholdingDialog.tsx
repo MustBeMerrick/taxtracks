@@ -71,6 +71,10 @@ export function SimulateWithholdingDialog({
           socialSecurity: p.simulated.socialSecurity,
           medicare: p.simulated.medicare,
           caSdi: p.simulated.sdi,
+          benefits: p.simulated.benefits,
+          preTax: p.simulated.preTax,
+          gtli: p.simulated.gtli,
+          employerHsa: p.simulated.employerHsa,
         })),
       )
       if (!result.ok) {
