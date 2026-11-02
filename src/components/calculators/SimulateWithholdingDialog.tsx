@@ -149,7 +149,7 @@ export function SimulateWithholdingDialog({
         <div className="tt-simulate-refund">
           <p className="tt-field-label">Projected household refund / amount due (estimate)</p>
           <p className="tt-muted">
-            Real withholding totals against the current placeholder liability estimate — not yet a real tax-engine calculation.
+            Real withholding totals against the current placeholder liability estimate, not a real tax calculation yet.
           </p>
           <RefundLine label="Federal" current={currentRefund.federal} next={simulatedRefund.federal} />
           <RefundLine label="California" current={currentRefund.ca} next={simulatedRefund.ca} />

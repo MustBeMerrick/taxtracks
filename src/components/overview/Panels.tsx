@@ -60,7 +60,7 @@ export function FederalVsState({ model }: { model: OverviewModel }) {
 export function InvestmentTable({ model }: { model: OverviewModel }) {
   const { rows, totals } = model.investments
   return (
-    <Card className="tt-area-invest" title={model.scope === 'household' ? 'Investment P/L' : 'Investment P/L (joint)'} actions={<Link className="tt-link" href="/income">Details</Link>}>
+    <Card className="tt-area-invest" title="Investment P/L" actions={<Link className="tt-link" href="/income">Details</Link>}>
       <div className="tt-table-scroll">
         <table className="tt-table tt-table--compact tt-table--sticky">
           <thead>
@@ -222,6 +222,7 @@ const activityDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'nu
 export function RecentActivity({ items, year }: { items: ActivityItem[]; year: number }) {
   return (
     <Card className="tt-area-activity" title="Recent activity & next steps" actions={<Link className="tt-link" href="/settings">View all</Link>}>
+      {items.length === 0 && <p className="tt-muted">Nothing yet. Changes you make will show up here.</p>}
       <ul className="tt-activity">
         {items.map((a) => {
           const Icon = ACTIVITY_ICONS[a.kind]

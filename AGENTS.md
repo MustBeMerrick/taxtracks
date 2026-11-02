@@ -22,8 +22,7 @@ The boilerplate is complete and live. Built in four phases, each reviewed by Mar
 with the password. Not yet done on the server: passkeys registered, sample
 data cleared.
 
-**Placeholders:** Income, Payroll, Tax Engine, Calculators and Reports are stub
-pages listing what's planned (`src/components/pages/sections.tsx`). Liabilities are
+**Placeholders:** Liabilities are
 hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engine output.
 
 ## Next up — where to pick up
@@ -42,14 +41,14 @@ hand-entered sample values (`rulesVersion: 'placeholder-liabilities'`), not engi
    - **Phase 3:** projected paychecks from the pay schedule + current election; expected vs. actual
      withholding comparison.
    - No bonus/RSU stubs yet. Mae's stubs are the same ADP layout.
-2. **Income & Investments:** per-source summaries and transaction ledger, ST/LT
-   netting, dividends (qualified vs. ordinary), estimated vs. confirmed.
-3. **Tax Engine:** 2026 federal + California, tax-year-versioned rule sets, traceable
-   calculation tree; replaces the placeholder liabilities and feeds Recalculate.
-4. **Reports** (optional, P2).
+2. **Income & Investments** (built, `/income`): per-person brokerage boxes — dividends, ST/LT
+   profit and loss, 1099 final. Not yet: transaction ledger, qualified vs. ordinary dividends.
 
-The Simulator's federal/CA year-end numbers need the Tax Engine; until it exists,
-drive them from the placeholder liabilities and label them as estimates.
+Reports was removed (2026-11-01). **Tax Engine** (`/tax-engine`) is back, holding the income
+Calculations card (`src/lib/core/income-summary.ts`, reproduces Marc's spreadsheet to the cent):
+salary + brokerage results → ordinary income, LTCG, capital-loss limit, standard deductions,
+taxable income. Next: brackets, LTCG rates and NIIT to replace the placeholder liabilities
+(Overview/Calculators still use those, labelled as estimates).
 
 Small open items:
 - Fail fast at startup when `AUTH_SESSION_SECRET` / `AUTH_PASSWORD_HASH` is empty

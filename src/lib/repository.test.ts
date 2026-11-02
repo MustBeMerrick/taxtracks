@@ -72,6 +72,48 @@ describe('migrations 2-3: sample pay dates', () => {
   })
 })
 
+describe('migration 4: sample brokerage owners', () => {
+  it('gives legacy sample rows an owner and brokerage key, and leaves owned rows alone', () => {
+    const db = openDb(':memory:')
+    const r = new TaxDataRepository(db)
+    r.ensureSeeded()
+    db.exec("UPDATE investment_summaries SET data = json_remove(json_remove(data, '$.owner'), '$.brokerage')")
+    db.exec('PRAGMA user_version = 3')
+    migrate(db)
+    const rows = r.all('investmentSummaries')
+    expect(rows.every((x) => x.owner && x.brokerage === x.name.toLowerCase())).toBe(true)
+    expect(rows.find((x) => x.brokerage === 'vanguard')?.owner).toBe('mae')
+  })
+})
+
+describe('migration 5: duplicate brokerage rows', () => {
+  it('keeps the most recently edited row per person and brokerage', () => {
+    const db = openDb(':memory:')
+    const r = new TaxDataRepository(db)
+    r.clearAll()
+    const base = { taxYear: 2026, owner: 'marc', brokerage: 'robinhood', name: 'Robinhood', shortTerm: 0, longTerm: 0, dividendsInterest: 0, status: 'manual_estimate' as const }
+    r.put('investmentSummaries', { ...base, id: 'old', shortTerm: -1 })
+    db.exec("UPDATE investment_summaries SET updated_at = '2026-01-01T00:00:00Z' WHERE id = 'old'")
+    r.put('investmentSummaries', { ...base, id: 'new', shortTerm: 5 })
+    r.put('investmentSummaries', { ...base, id: 'other', brokerage: 'lpl', name: 'LPL' })
+    db.exec('PRAGMA user_version = 4')
+    migrate(db)
+    expect(r.all('investmentSummaries').map((x) => x.id).sort()).toEqual(['new', 'other'])
+  })
+})
+
+describe('person-scoped investments', () => {
+  it('household sums everyone; a person sees only their own brokerages', () => {
+    repo.ensureSeeded()
+    const data = repo.yearData(2026)
+    const house = buildOverview(data, 'household')
+    const marc = buildOverview(data, 'marc')
+    const mae = buildOverview(data, 'mae')
+    expect(marc.investments.totals.total + mae.investments.totals.total).toBe(house.investments.totals.total)
+    expect(marc.investments.rows.every((x) => x.owner === 'marc')).toBe(true)
+  })
+})
+
 describe('TaxDataRepository', () => {
   it('seeds sample data once', () => {
     expect(repo.ensureSeeded()).toBe(true)
@@ -84,7 +126,9 @@ describe('TaxDataRepository', () => {
     repo.ensureSeeded()
     const fromDb = buildOverview(repo.yearData(2026), 'household')
     const fromFixture = buildOverview(sample, 'household')
-    expect(fromDb.refund).toEqual(fromFixture.refund)
+    // Liability is now computed by the tax engine, so only the record-driven parts must match the fixture.
+    expect(fromDb.payments).toEqual(fromFixture.payments)
+    expect(repo.yearData(2026).liabilities.map((l) => l.id)).toEqual(['liability-2026-federal', 'liability-2026-ca'])
     expect(fromDb.income.total).toBe(fromFixture.income.total)
     expect(fromDb.monthly).toEqual(fromFixture.monthly)
   })

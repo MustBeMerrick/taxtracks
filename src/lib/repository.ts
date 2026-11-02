@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
+import { estimatedLiabilities, estimateHouseholdTax } from '@/lib/core/tax-liability'
 import { DATA_TABLES, SCHEMA_VERSION, sqlTable, transaction, type DataTable } from '@/lib/db'
 import type {
   ActivityItem,
@@ -117,13 +118,22 @@ export class TaxDataRepository {
   }
 
   yearData(year: number): YearData {
+    const taxpayers = this.all('taxpayers')
+    const payroll = this.all('payroll', year).sort((a, b) => a.payDate.localeCompare(b.payDate))
+    const investments = this.all('investmentSummaries', year)
+    // Liability comes from the tax engine whenever the year and filing status have verified tables;
+    // otherwise whatever was stored (hand-entered placeholders) is used.
+    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
+    const computed = filingStatus
+      ? estimateHouseholdTax(year, filingStatus, { taxpayerIds: taxpayers.map((t) => t.id), payroll, investments, carryovers: this.all('carryovers', year) })
+      : null
     return {
       year,
-      taxpayers: this.all('taxpayers'),
-      payroll: this.all('payroll', year).sort((a, b) => a.payDate.localeCompare(b.payDate)),
-      investments: this.all('investmentSummaries', year),
+      taxpayers,
+      payroll,
+      investments,
       otherIncome: this.all('otherIncome', year),
-      liabilities: this.all('liabilities', year),
+      liabilities: computed ? estimatedLiabilities(year, computed.estimate, nowIso()) : this.all('liabilities', year),
       activity: this.all('activity'),
     }
   }

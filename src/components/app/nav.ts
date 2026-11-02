@@ -1,11 +1,10 @@
 import {
   Calculator,
-  ChartColumn,
+  Sigma,
   ChartLine,
   LayoutDashboard,
   ReceiptText,
   Settings,
-  Sigma,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,7 +27,6 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/payroll', label: 'Paystubs', shortLabel: 'Paystubs', title: 'Paystubs', icon: ReceiptText, primaryOnMobile: true },
   { path: '/tax-engine', label: 'Tax Engine', shortLabel: 'Engine', title: 'Tax Engine', icon: Sigma, primaryOnMobile: true },
   { path: '/calculators', label: 'Calculators', shortLabel: 'Calculators', title: 'Withholding Calculators', icon: Calculator, primaryOnMobile: false },
-  { path: '/reports', label: 'Reports', shortLabel: 'Reports', title: 'Reports', icon: ChartColumn, primaryOnMobile: false },
   { path: '/settings', label: 'Settings & Tax Data', shortLabel: 'Settings', title: 'Settings & Tax Data', icon: Settings, primaryOnMobile: false, footer: true },
 ]
 
