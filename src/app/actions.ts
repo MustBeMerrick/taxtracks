@@ -11,7 +11,8 @@ import { investmentId, matchingEntries, validateInvestmentEntry, type Investment
 import { benefitsTotal } from '@/lib/core/payroll'
 import type { PaystubBenefits } from '@/lib/core/types'
 import { validatePaystub, type PaystubInput } from '@/lib/core/paystub-input'
-import { getRepository, selectedYear, YEAR_COOKIE } from '@/lib/data'
+import { ALLOCATION_COOKIE, getRepository, selectedYear, YEAR_COOKIE } from '@/lib/data'
+import { isAllocationMethod, type AllocationMethod } from '@/lib/core/liability-allocation'
 import { hashInputs } from '@/lib/repository'
 
 // Every action re-checks the session: actions are reachable by direct POST.
@@ -24,6 +25,13 @@ export async function selectTaxYear(year: number): Promise<void> {
   const repository = getRepository()
   if (!repository.taxYears().some((t) => t.year === year)) throw new Error(`No data for tax year ${year}`)
   ;(await cookies()).set(YEAR_COOKIE, String(year), { path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 })
+}
+
+/** Remembers how the Overview splits joint liability between the spouses (display only; no tax changes). */
+export async function setAllocationMethod(method: AllocationMethod): Promise<void> {
+  await requireSession()
+  if (!isAllocationMethod(method)) throw new Error('Unknown allocation method')
+  ;(await cookies()).set(ALLOCATION_COOKIE, method, { path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 })
 }
 
 export async function setFilingStatus(year: number, status: FilingStatus): Promise<void> {

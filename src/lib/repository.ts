@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
+import { allocateHouseholdLiability, type AllocationMethod, type LiabilityAllocation } from '@/lib/core/liability-allocation'
 import { estimatedLiabilities, estimateHouseholdTax } from '@/lib/core/tax-liability'
 import { DATA_TABLES, SCHEMA_VERSION, sqlTable, transaction, type DataTable } from '@/lib/db'
 import type {
@@ -62,6 +63,7 @@ export interface YearData {
   otherIncome: OtherIncome[]
   liabilities: LiabilityEstimate[]
   activity: ActivityItem[]
+  taxPayments: TaxPayment[]
 }
 
 export interface ExportFile {
@@ -142,7 +144,22 @@ export class TaxDataRepository {
       otherIncome: this.all('otherIncome', year),
       liabilities: computed ? estimatedLiabilities(year, computed.estimate, `${year}-01-01T00:00:00.000Z`) : this.all('liabilities', year),
       activity: this.all('activity'),
+      taxPayments: this.all('taxPayments', year),
     }
+  }
+
+  /** Both splits of the year's joint liability between the spouses. Null when the engine has no tables for it. */
+  liabilityAllocations(year: number): Record<AllocationMethod, LiabilityAllocation> | null {
+    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
+    if (!filingStatus) return null
+    return allocateHouseholdLiability(year, filingStatus, {
+      taxpayerIds: this.all('taxpayers').map((t) => t.id),
+      payroll: this.all('payroll', year),
+      investments: this.all('investmentSummaries', year),
+      carryovers: this.all('carryovers', year),
+      deductions: this.all('deductions', year),
+      taxPayments: this.all('taxPayments'),
+    })
   }
 
   taxYears(): TaxYear[] {

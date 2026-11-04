@@ -704,3 +704,14 @@
 .tt-donut .recharts-tooltip-wrapper {
   z-index: 2;
 }
+
+/* A person's share of the joint return (person scope only). */
+.tt-allocation-lead {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+}
+
+.tt-allocation-strong th,
+.tt-allocation-strong td {
+  font-weight: 600;
+}

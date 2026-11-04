@@ -6,9 +6,11 @@ import type {
   OtherIncome,
   PayrollRecord,
   Provenance,
+  TaxPayment,
   Taxpayer,
 } from '@/lib/core/types'
-import { applyRate, ratio, sum, sumBy, type Cents } from '@/lib/core/money'
+import { allocateJointPayments, incomeProportional, personalIncome, type AllocationMethod, type LiabilityAllocation } from '@/lib/core/liability-allocation'
+import { ratio, sum, sumBy, type Cents } from '@/lib/core/money'
 import { afterTaxTotal } from '@/lib/core/payroll'
 
 /*
@@ -23,6 +25,10 @@ export interface OverviewInput {
   otherIncome: OtherIncome[]
   liabilities: LiabilityEstimate[]
   activity: ActivityItem[]
+  /** Estimated / extension payments for this tax year (joint: no owner). */
+  taxPayments?: TaxPayment[]
+  /** How the joint liability is split for a person's view; income proportional over `liabilities` when absent. */
+  allocation?: LiabilityAllocation
 }
 
 export type Scope = 'household' | string
@@ -86,8 +92,17 @@ export interface InvestmentRow extends InvestmentSourceSummary {
 
 export interface OverviewModel {
   scope: Scope
-  /** 1 for the household; a person's fraction of household personal income, which scales liability. */
+  /** 1 for the household; a person's allocated share of the joint liability. */
   liabilityShare: number
+  /** A person's view: how their share was worked out. Null for the household. */
+  allocation: {
+    method: AllocationMethod
+    baseline: ByJurisdiction
+    investment: ByJurisdiction
+    /** Their share of joint estimated/extension payments (in proportion to allocated liability). */
+    jointPayments: ByJurisdiction
+    note?: string
+  } | null
   liability: ByJurisdiction
   liabilityStatus: Provenance
   payments: ByJurisdiction
@@ -154,24 +169,34 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   const scopedInvestments = household ? input.investments : input.investments.filter((i) => i.owner === scope)
 
   // The household files jointly, so liability is computed once for the household. A person's view shows their
-  // share of it, proportional to their share of the household's personal income (wages + brokerage results).
-  // Payments follow the person: only their own paychecks' withholding counts against their share.
-  const personalIncome = (id: string) =>
-    sumBy(input.payroll.filter((r) => r.taxpayerId === id), w2Wages) +
-    sumBy(input.investments.filter((i) => i.owner === id), (i) => i.shortTerm + i.longTerm + i.dividendsInterest)
-  const everyoneIncome = sumBy(input.taxpayers, (t) => personalIncome(t.id))
-  const liabilityShare = household ? 1 : everyoneIncome > 0 ? Math.min(1, Math.max(0, personalIncome(scope) / everyoneIncome)) : 0
-  const liabilityFor = (j: Jurisdiction) =>
-    applyRate(sumBy(input.liabilities.filter((l) => l.jurisdiction === j), (l) => l.amount), liabilityShare)
-  const liability = byJurisdiction(liabilityFor('federal'), liabilityFor('ca'))
+  // allocated share of it (see liability-allocation.ts); the household view never depends on the method.
+  // Payments follow the person: their own paychecks' withholding, plus a share of joint estimated payments.
+  const ids = input.taxpayers.map((t) => t.id)
+  const jointLiability = (j: Jurisdiction) => sumBy(input.liabilities.filter((l) => l.jurisdiction === j), (l) => l.amount)
+  const householdLiability = { federal: jointLiability('federal'), ca: jointLiability('ca') }
+  const allocation =
+    input.allocation ?? incomeProportional(householdLiability, ids, Object.fromEntries(ids.map((id) => [id, personalIncome(id, input)])))
+  const mine = household ? null : (allocation.people[scope] ?? null)
+  const liability = mine ? byJurisdiction(mine.total.federal, mine.total.ca) : byJurisdiction(householdLiability.federal, householdLiability.ca)
+  const householdTotal = householdLiability.federal + householdLiability.ca
+  const liabilityShare = household ? 1 : householdTotal > 0 ? liability.total / householdTotal : 0
+
+  const taxPayments = input.taxPayments ?? []
+  const jointPaid = (j: Jurisdiction, actualOnly: boolean) => {
+    const total = sumBy(taxPayments.filter((p) => p.jurisdiction === j && (!actualOnly || p.status === 'actual')), (p) => p.amount)
+    if (household) return total
+    const i = ids.indexOf(scope)
+    return i === -1 ? 0 : allocateJointPayments(total, ids, (id) => allocation.people[id]?.total[j] ?? 0)[i]
+  }
   const scopedActualPayroll = scopedPayroll.filter((r) => r.status === 'actual')
+  const jointPayments = byJurisdiction(jointPaid('federal', false), jointPaid('ca', false))
   const payments = byJurisdiction(
-    sumBy(scopedPayroll, (r) => r.federalWithholding),
-    sumBy(scopedPayroll, (r) => r.caWithholding),
+    sumBy(scopedPayroll, (r) => r.federalWithholding) + jointPayments.federal,
+    sumBy(scopedPayroll, (r) => r.caWithholding) + jointPayments.ca,
   )
   const paymentsActual = byJurisdiction(
-    sumBy(scopedActualPayroll, (r) => r.federalWithholding),
-    sumBy(scopedActualPayroll, (r) => r.caWithholding),
+    sumBy(scopedActualPayroll, (r) => r.federalWithholding) + jointPaid('federal', true),
+    sumBy(scopedActualPayroll, (r) => r.caWithholding) + jointPaid('ca', true),
   )
   const refund = byJurisdiction(payments.federal - liability.federal, payments.ca - liability.ca)
 
@@ -237,6 +262,15 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   return {
     scope,
     liabilityShare,
+    allocation: mine
+      ? {
+          method: allocation.method,
+          baseline: byJurisdiction(mine.baseline.federal, mine.baseline.ca),
+          investment: byJurisdiction(mine.investment.federal, mine.investment.ca),
+          jointPayments,
+          ...(allocation.note ? { note: allocation.note } : {}),
+        }
+      : null,
     liability,
     liabilityStatus: combinedStatus(input.liabilities.map((l) => l.status)) === 'actual' ? 'actual' : 'manual_estimate',
     payments,

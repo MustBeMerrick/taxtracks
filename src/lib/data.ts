@@ -1,6 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import type { DatabaseSync } from 'node:sqlite'
+import { DEFAULT_ALLOCATION_METHOD, isAllocationMethod, type AllocationMethod } from '@/lib/core/liability-allocation'
 import { openDb } from '@/lib/db'
 import { TaxDataRepository } from '@/lib/repository'
 
@@ -25,6 +26,13 @@ export function getRepository(): TaxDataRepository {
 }
 
 export const YEAR_COOKIE = 'tt_year'
+export const ALLOCATION_COOKIE = 'tt_allocation'
+
+/** The Overview's per-person liability split (a per-browser preference); income proportional by default. */
+export async function selectedAllocationMethod(): Promise<AllocationMethod> {
+  const value = (await cookies()).get(ALLOCATION_COOKIE)?.value
+  return isAllocationMethod(value) ? value : DEFAULT_ALLOCATION_METHOD
+}
 
 /** The tax year being viewed: the cookie if it names a known year, else the latest year on file. */
 export async function selectedYear(): Promise<number> {
