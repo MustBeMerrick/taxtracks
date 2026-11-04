@@ -1,6 +1,6 @@
 import { applyRate, formatMoney, cents, sum, type Cents } from './money'
 import { formatPayDate, isSemiMonthlyPayDate } from './pay-dates'
-import type { PaystubBenefits, PayrollRecord } from './types'
+import type { AfterTaxDeductions, PaystubBenefits, PayrollRecord } from './types'
 import { getWithholdingRules, UnsupportedTaxYearError } from './withholding/rules'
 
 /*
@@ -17,8 +17,9 @@ export const EMPTY_BENEFITS: PaystubBenefits = {
   dependentFsa: 0,
   hsa: 0,
   retirement401k: 0,
-  hospitalIndemnity: 0,
 }
+
+export const EMPTY_AFTER_TAX: AfterTaxDeductions = { hospitalIndemnity: 0, other: 0 }
 
 export const isPaidOut = (record: PayrollRecord) => record.status === 'actual'
 
@@ -26,10 +27,12 @@ export function benefitsTotal(benefits: PaystubBenefits): Cents {
   return sum(Object.values(benefits).map((v) => v ?? 0))
 }
 
+export const afterTaxTotal = (r: Pick<PayrollRecord, 'afterTax'>): Cents => (r.afterTax ? r.afterTax.hospitalIndemnity + r.afterTax.other : 0)
+
 export const totalTaxes = (r: PayrollRecord): Cents =>
   r.federalWithholding + r.caWithholding + r.socialSecurity + r.medicare + r.caSdi
 
-export const netPay = (r: PayrollRecord): Cents => r.gross - r.preTax - totalTaxes(r)
+export const netPay = (r: PayrollRecord): Cents => r.gross - r.preTax - totalTaxes(r) - afterTaxTotal(r)
 
 /** The columns that accumulate into year-to-date. */
 export interface PaystubAmounts {
@@ -40,10 +43,11 @@ export interface PaystubAmounts {
   medicare: Cents
   ca: Cents
   sdi: Cents
+  afterTax: Cents
   net: Cents
 }
 
-const ZERO: PaystubAmounts = { gross: 0, preTax: 0, federal: 0, socialSecurity: 0, medicare: 0, ca: 0, sdi: 0, net: 0 }
+const ZERO: PaystubAmounts = { gross: 0, preTax: 0, federal: 0, socialSecurity: 0, medicare: 0, ca: 0, sdi: 0, afterTax: 0, net: 0 }
 
 export function amountsOf(r: PayrollRecord): PaystubAmounts {
   return {
@@ -54,6 +58,7 @@ export function amountsOf(r: PayrollRecord): PaystubAmounts {
     medicare: r.medicare,
     ca: r.caWithholding,
     sdi: r.caSdi,
+    afterTax: afterTaxTotal(r),
     net: netPay(r),
   }
 }
@@ -67,6 +72,7 @@ function add(a: PaystubAmounts, b: PaystubAmounts): PaystubAmounts {
     medicare: a.medicare + b.medicare,
     ca: a.ca + b.ca,
     sdi: a.sdi + b.sdi,
+    afterTax: a.afterTax + b.afterTax,
     net: a.net + b.net,
   }
 }

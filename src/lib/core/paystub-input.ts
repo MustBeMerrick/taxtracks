@@ -1,6 +1,6 @@
 import { benefitsTotal } from './payroll'
 import type { Cents } from './money'
-import type { IsoDate, PayrollRecord, PaystubBenefits } from './types'
+import type { AfterTaxDeductions, IsoDate, PayrollRecord, PaystubBenefits } from './types'
 
 /** What the paystub form submits (and what the server action re-validates). Money in cents. */
 export interface PaystubInput {
@@ -14,6 +14,7 @@ export interface PaystubInput {
   bonus?: boolean
   gross: Cents
   benefits: PaystubBenefits
+  afterTax: AfterTaxDeductions
   gtli: Cents
   employerHsa: Cents
   federalWithholding: Cents
@@ -45,12 +46,16 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
     input.medicare,
     input.caSdi,
     ...Object.values(input.benefits ?? {}),
+    ...Object.values(input.afterTax ?? {}),
   ]
-  if (!amounts.every(isCents) || Object.keys(input.benefits ?? {}).length !== 8) return { ok: false, error: 'Amounts must be zero or more.' }
+  if (!amounts.every(isCents) || Object.keys(input.benefits ?? {}).length !== 7 || Object.keys(input.afterTax ?? {}).length !== 2) {
+    return { ok: false, error: 'Amounts must be zero or more.' }
+  }
   if (input.gross <= 0) return { ok: false, error: 'Enter the gross pay.' }
 
   const preTax = benefitsTotal(input.benefits)
   if (preTax > input.gross) return { ok: false, error: 'Pre-tax deductions are more than gross pay.' }
+  const afterTax: AfterTaxDeductions = { hospitalIndemnity: input.afterTax.hospitalIndemnity, other: input.afterTax.other }
 
   return {
     ok: true,
@@ -69,6 +74,7 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
       medicare: input.medicare,
       caSdi: input.caSdi,
       benefits: input.benefits,
+      ...(afterTax.hospitalIndemnity || afterTax.other ? { afterTax } : {}),
       gtli: input.gtli,
       employerHsa: input.employerHsa,
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),

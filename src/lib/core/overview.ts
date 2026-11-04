@@ -9,6 +9,7 @@ import type {
   Taxpayer,
 } from '@/lib/core/types'
 import { applyRate, ratio, sum, sumBy, type Cents } from '@/lib/core/money'
+import { afterTaxTotal } from '@/lib/core/payroll'
 
 /*
  * Derives every Overview figure from canonical records (spec §5: derived
@@ -57,6 +58,7 @@ export interface PayrollTotals {
   medicare: Cents
   caSdi: Cents
   preTax: Cents
+  afterTax: Cents
   takeHome: Cents
 }
 
@@ -118,8 +120,9 @@ function payrollTotals(records: PayrollRecord[]): PayrollTotals {
     medicare: sumBy(records, (r) => r.medicare),
     caSdi: sumBy(records, (r) => r.caSdi),
     preTax: sumBy(records, (r) => r.preTax),
+    afterTax: sumBy(records, afterTaxTotal),
   }
-  const takeHome = t.gross - t.federal - t.ca - t.socialSecurity - t.medicare - t.caSdi - t.preTax
+  const takeHome = t.gross - t.federal - t.ca - t.socialSecurity - t.medicare - t.caSdi - t.preTax - t.afterTax
   return { ...t, takeHome }
 }
 

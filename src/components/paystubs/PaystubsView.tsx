@@ -94,6 +94,9 @@ function PersonLedger({
   const warningsByRecord = new Map<string, PayrollWarning[]>()
   for (const w of warnings) if (w.recordId) warningsByRecord.set(w.recordId, [...(warningsByRecord.get(w.recordId) ?? []), w])
 
+  // Only people with after-tax deductions get the column, so the table stays narrow otherwise.
+  const showAfterTax = summary.fullYear.afterTax > 0
+
   async function run(id: string, action: () => Promise<{ ok: boolean; message: string }>) {
     setBusy((b) => new Set(b).add(id))
     setError(null)
@@ -156,6 +159,7 @@ function PersonLedger({
                 <th scope="col">Medicare</th>
                 <th scope="col">CA tax</th>
                 <th scope="col">CA SDI</th>
+                {showAfterTax && <th scope="col">After-tax</th>}
                 <th scope="col">Net pay</th>
                 <th scope="col">
                   <span className="visually-hidden">Actions</span>
@@ -174,6 +178,7 @@ function PersonLedger({
                 <Money value={summary.paid.medicare} />
                 <Money value={summary.paid.ca} />
                 <Money value={summary.paid.sdi} />
+                {showAfterTax && <Money value={summary.paid.afterTax} />}
                 <Money value={summary.paid.net} />
                 <td />
               </tr>
@@ -188,6 +193,7 @@ function PersonLedger({
                 <Money value={summary.fullYear.medicare} />
                 <Money value={summary.fullYear.ca} />
                 <Money value={summary.fullYear.sdi} />
+                {showAfterTax && <Money value={summary.fullYear.afterTax} />}
                 <Money value={summary.fullYear.net} />
                 <td />
               </tr>
@@ -218,6 +224,7 @@ function PersonLedger({
                     <Money value={amounts.medicare} ytd={paid ? ytd.medicare : undefined} />
                     <Money value={amounts.ca} ytd={paid ? ytd.ca : undefined} />
                     <Money value={amounts.sdi} ytd={paid ? ytd.sdi : undefined} />
+                    {showAfterTax && <Money value={amounts.afterTax} ytd={paid ? ytd.afterTax : undefined} />}
                     <Money value={amounts.net} ytd={paid ? ytd.net : undefined} />
                     <td className="tt-stubs-actions">
                       {confirmingDelete === record.id ? (

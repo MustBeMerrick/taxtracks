@@ -5,9 +5,9 @@ import { savePaystub } from '@/app/actions'
 import { handleNumericChange } from '@/components/ui/numeric-input'
 import { formatMoney } from '@/lib/core/money'
 import { nextPayDate } from '@/lib/core/pay-dates'
-import { benefitsTotal, EMPTY_BENEFITS } from '@/lib/core/payroll'
+import { benefitsTotal, EMPTY_AFTER_TAX, EMPTY_BENEFITS } from '@/lib/core/payroll'
 import type { PaystubInput } from '@/lib/core/paystub-input'
-import type { PayrollRecord, PaystubBenefits } from '@/lib/core/types'
+import type { AfterTaxDeductions, PayrollRecord, PaystubBenefits } from '@/lib/core/types'
 import { formatDollars, parseMoney } from '@/lib/core/withholding/form'
 import { useScheduleRefresh } from '@/lib/refresh-context'
 import '@/components/calculators/calculators.css'
@@ -28,6 +28,7 @@ type MoneyKey =
   | 'hsa'
   | 'retirement401k'
   | 'hospitalIndemnity'
+  | 'otherAfterTax'
   | 'gtli'
   | 'employerHsa'
 
@@ -43,6 +44,7 @@ const dollars = (cents: number | undefined) => (cents ? formatDollars((cents / 1
 
 function initialState(record: PayrollRecord | undefined, lastEmployer: string, defaultPayDate: string): FormState {
   const b: PaystubBenefits = record?.benefits ?? EMPTY_BENEFITS
+  const a: AfterTaxDeductions = record?.afterTax ?? EMPTY_AFTER_TAX
   return {
     payDate: record?.payDate ?? defaultPayDate,
     employer: record?.employer ?? lastEmployer,
@@ -60,7 +62,8 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
     vision: dollars(b.vision),
     healthcareFsa: dollars(b.healthcareFsa),
     dependentFsa: dollars(b.dependentFsa),
-    hospitalIndemnity: dollars(b.hospitalIndemnity),
+    hospitalIndemnity: dollars(a.hospitalIndemnity),
+    otherAfterTax: dollars(a.other),
     hsa: dollars(b.hsa),
     // Records that only carry a lump pre-tax total show it as 401(k)/other so nothing is silently dropped.
     retirement401k: dollars(record?.benefits ? b.retirement401k : record?.preTax),
@@ -71,7 +74,7 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
 
 const MONEY_KEYS: MoneyKey[] = [
   'gross', 'federal', 'socialSecurity', 'medicare', 'ca', 'sdi',
-  'medical', 'dental', 'vision', 'healthcareFsa', 'dependentFsa', 'hospitalIndemnity', 'hsa', 'retirement401k', 'gtli', 'employerHsa',
+  'medical', 'dental', 'vision', 'healthcareFsa', 'dependentFsa', 'hsa', 'retirement401k', 'hospitalIndemnity', 'otherAfterTax', 'gtli', 'employerHsa',
 ]
 
 export function PaystubDialog({
@@ -118,13 +121,14 @@ export function PaystubDialog({
     vision: value('vision'),
     healthcareFsa: value('healthcareFsa'),
     dependentFsa: value('dependentFsa'),
-    hospitalIndemnity: value('hospitalIndemnity'),
     hsa: value('hsa'),
     retirement401k: value('retirement401k'),
   }
+  const afterTax: AfterTaxDeductions = { hospitalIndemnity: value('hospitalIndemnity'), other: value('otherAfterTax') }
   const preTax = benefitsTotal(benefits)
+  const afterTaxSum = afterTax.hospitalIndemnity + afterTax.other
   const taxes = value('federal') + value('socialSecurity') + value('medicare') + value('ca') + value('sdi')
-  const net = value('gross') - preTax - taxes
+  const net = value('gross') - preTax - taxes - afterTaxSum
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -140,6 +144,7 @@ export function PaystubDialog({
       bonus: form.bonus,
       gross: value('gross'),
       benefits,
+      afterTax,
       gtli: value('gtli'),
       employerHsa: value('employerHsa'),
       federalWithholding: value('federal'),
@@ -267,9 +272,16 @@ export function PaystubDialog({
               {field('vision', 'Vision')}
               {field('healthcareFsa', 'Healthcare FSA')}
               {field('dependentFsa', 'Dependent care FSA')}
-              {field('hospitalIndemnity', 'Hospital indemnity')}
               {field('hsa', 'Health savings (HSA)')}
               {field('retirement401k', '401(k) / 403(b)')}
+            </div>
+          </fieldset>
+
+          <fieldset className="tt-calc-group">
+            <legend>After-tax deductions</legend>
+            <div className="tt-stubs-form-grid">
+              {field('hospitalIndemnity', 'Hospital indemnity')}
+              {field('otherAfterTax', 'Other after-tax', 'Lines without the pre-tax asterisk on the stub.')}
             </div>
           </fieldset>
 
@@ -290,7 +302,14 @@ export function PaystubDialog({
           </fieldset>
 
           <p className="tt-stubs-check" aria-live="polite">
-            Pre-tax total <strong>{formatMoney(preTax)}</strong> · Taxes <strong>{formatMoney(taxes)}</strong> · Net pay{' '}
+            Pre-tax total <strong>{formatMoney(preTax)}</strong> · Taxes <strong>{formatMoney(taxes)}</strong>
+            {afterTaxSum > 0 && (
+              <>
+                {' '}
+                · After-tax <strong>{formatMoney(afterTaxSum)}</strong>
+              </>
+            )}{' '}
+            · Net pay{' '}
             <strong className={net < 0 ? 'tt-stubs-negative' : ''}>{formatMoney(net)}</strong>
             <span className="tt-muted"> (compare with the stub’s Net Pay)</span>
           </p>

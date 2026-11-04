@@ -28,6 +28,10 @@ describe('net pay (real stub)', () => {
   it('is gross − pre-tax − taxes', () => {
     expect(netPay(stub('a', '2026-10-31'))).toBe(cents(5829.77))
   })
+
+  it('also subtracts after-tax deductions', () => {
+    expect(netPay(stub('a', '2026-10-31', { afterTax: { hospitalIndemnity: cents(6.46), other: cents(1) } }))).toBe(cents(5822.31))
+  })
 })
 
 describe('year-to-date rows', () => {

@@ -74,6 +74,8 @@ export interface PayrollRecord extends RecordMeta {
   gtli?: Cents
   /** Employer HSA contribution: not on the stub, counts toward the HSA limit and California wages. */
   employerHsa?: Cents
+  /** After-tax deductions: reduce net pay only, never taxable wages (absent on older records). */
+  afterTax?: AfterTaxDeductions
 }
 
 /** Pre-tax deductions by line, per paycheck. */
@@ -85,8 +87,14 @@ export interface PaystubBenefits {
   dependentFsa: Cents
   hsa: Cents
   retirement401k: Cents
-  /** Voluntary hospital indemnity premium; absent on older records. */
-  hospitalIndemnity?: Cents
+}
+
+/** After-tax deductions by line, per paycheck (no pre-tax asterisk on the stub). */
+export interface AfterTaxDeductions {
+  /** Voluntary hospital indemnity premium. */
+  hospitalIndemnity: Cents
+  /** Anything else taken after tax (Roth 401(k), insurance, garnishments…). */
+  other: Cents
 }
 
 /** Per-source investment totals until transaction-level ledgers exist. */

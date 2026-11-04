@@ -99,11 +99,11 @@ export function calculateIncomeSummary(taxYear: number, input: IncomeSummaryInpu
 
 /** A full year of paystubs (Paid Out and projected) rolled into the annual figures the summary needs. */
 export function payrollAnnuals(records: PayrollRecord[]) {
-  const benefit = (r: PayrollRecord) => r.benefits ?? { medical: 0, dental: 0, vision: 0, healthcareFsa: 0, dependentFsa: 0, hsa: 0, retirement401k: 0, hospitalIndemnity: 0 }
+  const benefit = (r: PayrollRecord) => r.benefits ?? { medical: 0, dental: 0, vision: 0, healthcareFsa: 0, dependentFsa: 0, hsa: 0, retirement401k: 0 }
   return {
     salary: sum(records.map((r) => r.gross)),
     hsa: sum(records.map((r) => benefit(r).hsa)),
-    section125: sum(records.map((r) => benefit(r).medical + benefit(r).dental + benefit(r).vision + benefit(r).healthcareFsa + benefit(r).dependentFsa + (benefit(r).hospitalIndemnity ?? 0))),
+    section125: sum(records.map((r) => benefit(r).medical + benefit(r).dental + benefit(r).vision + benefit(r).healthcareFsa + benefit(r).dependentFsa)),
     // A stub that only carries a lump pre-tax total is treated as 401(k), as the paystub form does.
     retirement401k: sum(records.map((r) => (r.benefits ? r.benefits.retirement401k : r.preTax))),
     gtli: sum(records.map((r) => r.gtli ?? 0)),
