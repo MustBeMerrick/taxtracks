@@ -52,7 +52,10 @@
   color: var(--text-secondary);
 }
 
+/* position: relative makes this the containing block for the absolutely positioned
+   .visually-hidden labels, so rows scrolled out of view can't extend the page height. */
 .tt-stubs-scroll {
+  position: relative;
   width: fit-content;
   max-width: 100%;
   overflow-x: auto;
