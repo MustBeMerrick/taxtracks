@@ -1,13 +1,12 @@
 import type { FilingStatus } from './filing-status'
-import { CA_RATE_TABLES_2026 } from './withholding/ca-rate-tables-2026'
 import { cents, type Cents } from './money'
 import type { CaRateRow } from './withholding/types'
 
 /*
- * Year-keyed rules for the income summary (not withholding). Standard deductions: federal per
- * IRS Rev. Proc. 2025-32 (as are the brackets and capital gains breakpoints); California as used in Marc's own spreadsheet (confirm against the
- * FTB's 2026 figures when published). Capital losses offset ordinary income up to $3,000
- * ($1,500 married filing separately) federally and in California.
+ * Year-keyed rules for the income summary (not withholding). Federal standard deductions, brackets and
+ * capital gains breakpoints: IRS Rev. Proc. 2025-32. California rate schedules, standard deductions and
+ * exemption credits: FTB 2026 figures (2025 indexed by 3.4%; confirm against the FTB's published table).
+ * Capital losses offset ordinary income up to $3,000 ($1,500 married filing separately) federally and in California.
  */
 
 /** Rate schedule: tax = base-free marginal rates, each applying to income over `over`. */
@@ -41,17 +40,30 @@ const SINGLE_BRACKETS = bracketsFrom([[0, 0.1], [12_400, 0.12], [50_400, 0.22], 
 const MFS_BRACKETS = bracketsFrom([[0, 0.1], [12_400, 0.12], [50_400, 0.22], [105_700, 0.24], [201_775, 0.32], [256_225, 0.35], [384_350, 0.37]])
 
 /**
- * The EDD's withholding tables use 110% of California's statutory rates (1.1%, 2.2% … 14.63% instead of
- * 1%, 2% … 13.3%) so that withholding runs a little high. Liability uses the statutory rates, so divide
- * the EDD rates and base amounts by 1.1. Bracket thresholds are the EDD's 2026 indexed figures.
+ * California rate schedule from bracket floors (dollars) and statutory rates. Each row's base is the tax on all
+ * lower brackets. The 1% Mental Health Services Tax on taxable income over $1,000,000 is folded in as an extra
+ * row, as the EDD does. (Not the EDD withholding tables: those run at 110% of these rates, and their 2026
+ * thresholds are the 2025 FTB schedule.)
  */
-const EDD_WITHHOLDING_FACTOR = 1.1
-const caRows = (key: 'single' | 'married'): CaRateRow[] =>
-  CA_RATE_TABLES_2026.annual[key].map((r) => ({
-    over: r.over,
-    rate: Math.round((r.rate / EDD_WITHHOLDING_FACTOR) * 10_000) / 10_000,
-    base: Math.round((r.base / EDD_WITHHOLDING_FACTOR) * 100) / 100,
-  }))
+const MHST_FLOOR = 1_000_000
+const caSchedule = (rows: [number, number][]): CaRateRow[] => {
+  const floors = [...rows]
+  const at = floors.findIndex(([over]) => over > MHST_FLOOR)
+  const below = floors[(at === -1 ? floors.length : at) - 1]
+  floors.splice(at === -1 ? floors.length : at, 0, [MHST_FLOOR, below[1]])
+  const withMhst = floors.map(([over, rate]): [number, number] => [over, over >= MHST_FLOOR ? Math.round((rate + 0.01) * 1000) / 1000 : rate])
+  let base = 0
+  return withMhst.map(([over, rate], i) => {
+    if (i > 0) {
+      const [prevOver, prevRate] = withMhst[i - 1]
+      base = Math.round((base + (over - prevOver) * prevRate) * 100) / 100
+    }
+    return { over, rate, base }
+  })
+}
+// FTB 2026 Schedule X (single / MFS) and Schedule Y (MFJ / QSS = twice the single floors).
+const CA_SINGLE_2026 = caSchedule([[0, 0.01], [11_456, 0.02], [27_157, 0.04], [42_861, 0.06], [59_498, 0.08], [75_197, 0.093], [384_109, 0.103], [460_927, 0.113], [768_213, 0.123]])
+const CA_MFJ_2026 = caSchedule([[0, 0.01], [22_912, 0.02], [54_314, 0.04], [85_722, 0.06], [118_996, 0.08], [150_394, 0.093], [768_218, 0.103], [921_854, 0.113], [1_536_426, 0.123]])
 
 const RULES_2026: IncomeRules = {
   federalStandardDeduction: {
@@ -62,11 +74,11 @@ const RULES_2026: IncomeRules = {
     qss: cents(32_200),
   },
   californiaStandardDeduction: {
-    single: cents(5_850),
-    mfj: cents(11_700),
-    mfs: cents(5_850),
-    hoh: cents(11_700),
-    qss: cents(11_700),
+    single: cents(5_900),
+    mfj: cents(11_800),
+    mfs: cents(5_900),
+    hoh: cents(11_800),
+    qss: cents(11_800),
   },
   capitalLossLimit: {
     single: cents(3_000),
@@ -87,10 +99,10 @@ const RULES_2026: IncomeRules = {
   niitThreshold: { single: cents(200_000), mfj: cents(250_000), mfs: cents(125_000), hoh: cents(200_000), qss: cents(250_000) },
   additionalMedicareRate: 0.009,
   additionalMedicareThreshold: { single: cents(200_000), mfj: cents(250_000), mfs: cents(125_000), hoh: cents(200_000), qss: cents(250_000) },
-  // California's own 2026 schedule isn't published yet; thresholds are the EDD's 2026 annual schedule (Method B Tables 5-28), at statutory rates.
-  californiaRates: { single: caRows('single'), mfs: caRows('single'), mfj: caRows('married'), qss: caRows('married') },
-  // EDD 2026 Method B Table 4 is $168.30 per allowance, also at 110%: the credit itself is $153. Joint filers get two.
-  californiaExemptionCredit: { single: cents(153), mfj: cents(306), mfs: cents(153), hoh: cents(153), qss: cents(306) },
+  // Head of household has its own schedule, not in this app yet, so its California estimate stays off.
+  californiaRates: { single: CA_SINGLE_2026, mfs: CA_SINGLE_2026, mfj: CA_MFJ_2026, qss: CA_MFJ_2026 },
+  // $158 per personal exemption; joint filers get two. (The phaseout starts far above this household's AGI.)
+  californiaExemptionCredit: { single: cents(158), mfj: cents(316), mfs: cents(158), hoh: cents(158), qss: cents(316) },
 }
 
 const RULES_BY_YEAR: Record<number, IncomeRules> = { 2026: RULES_2026 }

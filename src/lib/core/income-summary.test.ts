@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { calculateIncomeSummary, type IncomeSummaryInput } from './income-summary'
 import { cents } from './money'
 
-// Marc's spreadsheet column: reconciled to the cent.
+// Marc's spreadsheet column: reconciled to the cent (California standard deduction since updated to the FTB 2026 $5,900).
 const marc: IncomeSummaryInput = {
   filingStatus: 'single',
   salary: cents(207_200.05),
@@ -32,9 +32,9 @@ describe('income summary (spreadsheet column)', () => {
     expect(s.ltcgIncome).toBe(cents(5_631))
     expect(s.capitalLossAllowed).toBe(0)
     expect(s.federalStandardDeduction).toBe(cents(16_100))
-    expect(s.stateStandardDeduction).toBe(cents(5_850))
+    expect(s.stateStandardDeduction).toBe(cents(5_900))
     expect(s.federalOrdinaryTaxable).toBe(cents(212_108.27))
-    expect(s.stateTaxable).toBe(cents(230_389.27))
+    expect(s.stateTaxable).toBe(cents(230_339.27))
     expect(s.capitalLossCarryForward).toBe(0)
   })
 
@@ -42,7 +42,7 @@ describe('income summary (spreadsheet column)', () => {
     const joint = calculateIncomeSummary(2026, { ...marc, filingStatus: 'mfj', salary: cents(376_716.77) })!
     expect(joint.ordinaryIncome).toBe(cents(399_562.91))
     expect(joint.federalStandardDeduction).toBe(cents(32_200))
-    expect(joint.stateStandardDeduction).toBe(cents(11_700))
+    expect(joint.stateStandardDeduction).toBe(cents(11_800))
   })
 })
 

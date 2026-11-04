@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calculateIncomeSummary, type IncomeSummaryInput } from './income-summary'
-import { cents } from './money'
+import { applyRate, cents } from './money'
 import { bracketTax, estimateTax } from './tax-liability'
 import { getIncomeRules } from './income-rules'
 
@@ -44,14 +44,41 @@ describe('California schedule', () => {
     }
   })
 
-  it('taxes joint income in the 9.3% bracket at the real rate', () => {
+  it('taxes joint income in the 9.3% bracket on the FTB 2026 schedule', () => {
     const s = calculateIncomeSummary(2026, household)!
     const e = estimateTax({ taxYear: 2026, filingStatus: 'mfj', summary: s, dividends: 0, medicareWages: [] })!
-    // The $145,448–$742,958 married bracket: base 7,044.33/1.1 = 6,404.03, rate 10.23%/1.1 = 9.3%.
-    expect(s.stateTaxable).toBeGreaterThan(cents(145_448))
-    expect(s.stateTaxable).toBeLessThan(cents(742_958))
-    const expected = 6_404.03 + 0.093 * (s.stateTaxable / 100 - 145_448)
+    expect(s.stateTaxable).toBeGreaterThan(cents(150_394))
+    expect(s.stateTaxable).toBeLessThan(cents(768_218))
+    const expected = 6_621.76 + 0.093 * (s.stateTaxable / 100 - 150_394)
     expect(Math.abs(e.california.tax - cents(expected))).toBeLessThan(cents(1))
+  })
+
+  it('matches the FTB 2026 bracket floors and bases, with the 1% mental health tax over $1M', () => {
+    const mfj = getIncomeRules(2026)!.californiaRates.mfj!
+    expect(mfj.find((r) => r.over === 150_394)).toEqual({ over: 150_394, rate: 0.093, base: 6_621.76 })
+    expect(mfj.find((r) => r.over === 1_000_000)?.rate).toBe(0.123)
+    expect(mfj.at(-1)).toMatchObject({ over: 1_536_426, rate: 0.133 })
+    const single = getIncomeRules(2026)!.californiaRates.single!
+    expect(single.find((r) => r.over === 75_197)?.rate).toBe(0.093)
+    expect(single.at(-1)).toMatchObject({ over: 1_000_000, rate: 0.133 })
+  })
+
+  // Regression figures from the Nov 2026 independent audit: the 2025 schedule ($6,403.94 + 9.3% over $145,448)
+  // gave $29,566.97 on $394,512.87; the 2026 schedule gives $29,324.81, and $28,070.86 on $381,029.47.
+  it.each([
+    [394_512.87, 29_324.81],
+    [381_029.47, 28_070.86],
+  ])('taxes %d of joint California taxable income at %d before credits', (income, tax) => {
+    const rows = getIncomeRules(2026)!.californiaRates.mfj!
+    const row = rows.filter((r) => r.over < income).at(-1)!
+    expect(cents(row.base) + applyRate(cents(income) - cents(row.over), row.rate)).toBe(cents(tax))
+  })
+
+  it('uses the 2026 standard deduction and exemption credit', () => {
+    const r = getIncomeRules(2026)!
+    expect(r.californiaStandardDeduction.mfj).toBe(cents(11_800))
+    expect(r.californiaStandardDeduction.single).toBe(cents(5_900))
+    expect(r.californiaExemptionCredit.mfj).toBe(cents(316))
   })
 })
 
@@ -77,8 +104,8 @@ describe('estimateTax', () => {
 
   it('sums federal and subtracts the exemption credit in California', () => {
     expect(est.federal.total).toBe(est.federal.ordinaryTax + est.federal.capitalGainsTax + est.federal.niit + est.federal.additionalMedicare)
-    expect(est.california.exemptionCredit).toBe(cents(306))
-    expect(est.california.total).toBe(est.california.tax - cents(306))
+    expect(est.california.exemptionCredit).toBe(cents(316))
+    expect(est.california.total).toBe(est.california.tax - cents(316))
     expect(est.california.tax).toBeGreaterThan(0)
   })
 

@@ -104,6 +104,9 @@ export interface OverviewModel {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+/** W-2 Box 1 wages for one paycheck: gross less pre-tax deductions, plus group-term life imputed income. */
+const w2Wages = (r: PayrollRecord): Cents => r.gross - r.preTax + (r.gtli ?? 0)
+
 const byJurisdiction = (federal: Cents, ca: Cents): ByJurisdiction => ({ federal, ca, total: federal + ca })
 
 function payrollTotals(records: PayrollRecord[]): PayrollTotals {
@@ -151,7 +154,7 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   // share of it, proportional to their share of the household's personal income (wages + brokerage results).
   // Payments follow the person: only their own paychecks' withholding counts against their share.
   const personalIncome = (id: string) =>
-    sumBy(input.payroll.filter((r) => r.taxpayerId === id), (r) => r.gross - r.preTax) +
+    sumBy(input.payroll.filter((r) => r.taxpayerId === id), w2Wages) +
     sumBy(input.investments.filter((i) => i.owner === id), (i) => i.shortTerm + i.longTerm + i.dividendsInterest)
   const everyoneIncome = sumBy(input.taxpayers, (t) => personalIncome(t.id))
   const liabilityShare = household ? 1 : everyoneIncome > 0 ? Math.min(1, Math.max(0, personalIncome(scope) / everyoneIncome)) : 0
@@ -169,12 +172,12 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   )
   const refund = byJurisdiction(payments.federal - liability.federal, payments.ca - liability.ca)
 
-  // Income: W-2 wages (gross less pre-tax) per scope; brokerage income is per owner; other income is joint.
+  // Income: W-2 wages (gross less pre-tax, plus imputed life insurance) per scope; brokerage income is per owner; other income is joint.
   const components: IncomeComponent[] = [
     {
       key: 'wages',
       label: 'Wages (W-2)',
-      amount: sumBy(scopedPayroll, (r) => r.gross - r.preTax),
+      amount: sumBy(scopedPayroll, w2Wages),
       status: combinedStatus(scopedPayroll.map((r) => r.status)),
     },
   ]
