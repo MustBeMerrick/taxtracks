@@ -17,7 +17,7 @@ const dateTime = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeSty
 
 export interface SettingsData {
   isSample: boolean
-  counts: { paychecks: number; investments: number; runs: number }
+  counts: { paychecks: number; investments: number }
   audit: AuditEvent[]
 }
 
@@ -63,7 +63,7 @@ function DataSection({ data }: { data: SettingsData }) {
       <p className="tt-settings-lead">
         Stored on the Tax Tracks server{data.isSample ? ' (currently the bundled sample data)' : ''}, shared by every device you sign in from.{' '}
         <span className="tt-muted">
-          {counts.paychecks} paychecks · {counts.investments} investment sources · {counts.runs} saved calculations
+          {counts.paychecks} paychecks · {counts.investments} investment sources
         </span>
       </p>
 

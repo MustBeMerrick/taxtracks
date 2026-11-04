@@ -15,48 +15,6 @@ function Signed({ value }: { value: Cents }) {
   return <span className={value < 0 ? 'tt-signed-negative' : undefined}>{formatMoney(value)}</span>
 }
 
-export function FederalVsState({ model }: { model: OverviewModel }) {
-  const [measure, setMeasure] = useState<'liability' | 'paid'>('liability')
-  const values = measure === 'liability' ? model.liability : model.payments
-  const max = Math.max(values.federal, values.ca, 1)
-
-  return (
-    <Card
-      className="tt-area-fedstate"
-      title="Federal vs. California"
-      actions={
-        <Segmented
-          label="Measure"
-          value={measure}
-          options={[
-            { value: 'liability', label: 'Liability' },
-            { value: 'paid', label: 'Paid (proj.)' },
-          ]}
-          onChange={setMeasure}
-        />
-      }
-    >
-      <ul className="tt-hbars">
-        {(['federal', 'ca'] as const).map((j) => (
-          <li key={j}>
-            <span className="tt-hbar-label">{JURISDICTION_LABELS[j]}</span>
-            <span className="tt-hbar-track">
-              <span className="tt-hbar-fill" style={{ width: `${(values[j] / max) * 100}%` }} />
-            </span>
-            <span className="tt-hbar-value">{formatMoney(values[j], { precision: 'whole' })}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="tt-panel-footnote">
-        {measure === 'liability' ? 'Projected income-tax liability' : 'Actual plus projected withholding'} ·{' '}
-        <Link className="tt-link" href="/tax-engine">
-          Trace in Tax Engine
-        </Link>
-      </p>
-    </Card>
-  )
-}
-
 export function InvestmentTable({ model }: { model: OverviewModel }) {
   const { rows, totals } = model.investments
   return (

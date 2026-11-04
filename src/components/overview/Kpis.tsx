@@ -41,6 +41,12 @@ export function Kpis({ model }: { model: OverviewModel }) {
           <Landmark size={18} className="tt-kpi-icon" aria-hidden="true" />
         </header>
         <p className="tt-kpi-value">{formatMoney(liability.total)}</p>
+        {model.allocation && (
+          <p className="tt-kpi-note">
+            {formatPercent(model.liabilityShare)} share of the joint estimate ·{' '}
+            {model.allocation.method === 'source_attributed' ? 'by source' : 'by income'}
+          </p>
+        )}
         <ProvenanceBadge status={model.liabilityStatus} />
         <SplitRows values={liability} />
       </article>

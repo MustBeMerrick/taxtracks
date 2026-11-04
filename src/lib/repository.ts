@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { allocateHouseholdLiability, type AllocationMethod, type LiabilityAllocation } from '@/lib/core/liability-allocation'
 import { estimatedLiabilities, estimateHouseholdTax } from '@/lib/core/tax-liability'
@@ -73,7 +73,6 @@ export interface ExportFile {
   tables: Partial<Record<DataTable, unknown[]>>
 }
 
-const DATA_CHANGED_AT = 'dataChangedAt'
 const ACTOR = 'owner'
 
 /** Singular, human-readable names for the change log. */
@@ -170,17 +169,7 @@ export class TaxDataRepository {
     return this.all('households').some((h) => h.isSample === true)
   }
 
-  /** When canonical data last changed; compared with the latest run to flag stale results. */
-  dataChangedAt(): string | null {
-    const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get(DATA_CHANGED_AT) as { value: string } | undefined
-    return row?.value ?? null
-  }
 
-  latestRun(year: number): CalculationRun | undefined {
-    return this.all('calculationRuns', year)
-      .sort((a, b) => a.ranAt.localeCompare(b.ranAt))
-      .at(-1)
-  }
 
   recentAudit(limit = 15): AuditEvent[] {
     return this.all('auditEvents')
@@ -195,8 +184,7 @@ export class TaxDataRepository {
     return transaction(this.db, () => {
       if (this.count('households') > 0) return false
       this.writeTables(sampleTables())
-      this.markChanged()
-      return true
+        return true
     })
   }
 
@@ -206,8 +194,7 @@ export class TaxDataRepository {
       const existed = record.id !== undefined && this.get(table, record.id) !== undefined
       const saved = this.upsert(table, record)
       this.audit(existed ? 'update' : 'create', table, saved.id, `${existed ? 'Updated' : 'Added'} ${RECORD_LABELS[table]}`)
-      this.markChanged()
-      return saved
+        return saved
     })
   }
 
@@ -215,18 +202,9 @@ export class TaxDataRepository {
     transaction(this.db, () => {
       this.db.prepare(`DELETE FROM ${sqlTable(table)} WHERE id = ?`).run(id)
       this.audit('delete', table, id, `Deleted ${RECORD_LABELS[table]}`)
-      this.markChanged()
-    })
+      })
   }
 
-  /** Saves a calculation snapshot. Does not mark data as changed. */
-  saveRun(run: NewRecord<'calculationRuns'>): CalculationRun {
-    return transaction(this.db, () => {
-      const saved = this.upsert('calculationRuns', run)
-      this.audit('recalculate', 'calculationRuns', saved.id, `Recalculated ${run.taxYear}`)
-      return saved
-    })
-  }
 
   exportAll(): ExportFile {
     const tables: ExportFile['tables'] = {}
@@ -241,8 +219,7 @@ export class TaxDataRepository {
       this.clearTables()
       const records = this.writeTables(parsed.tables)
       this.audit('import', 'all', undefined, `Restored ${records} records from a backup made ${parsed.exportedAt.slice(0, 10)}`)
-      this.markChanged()
-      return { records }
+        return { records }
     })
   }
 
@@ -252,8 +229,7 @@ export class TaxDataRepository {
       this.clearTables()
       this.writeTables(sampleTables())
       this.audit('reset', 'all', undefined, 'Reset to sample data')
-      this.markChanged()
-    })
+      })
   }
 
   /** Removes every record, leaving an empty household and tax year ready for real data. */
@@ -263,8 +239,7 @@ export class TaxDataRepository {
       this.upsert('households', { id: 'household', name: 'Household' })
       this.upsert('taxYears', { id: `ty-${year}`, householdId: 'household', year, filingStatus: 'mfj', jurisdictions: ['federal', 'ca'] })
       this.audit('reset', 'all', undefined, 'Cleared all data')
-      this.markChanged()
-    })
+      })
   }
 
   // ---- internals ----
@@ -302,9 +277,6 @@ export class TaxDataRepository {
     return count
   }
 
-  private markChanged() {
-    this.db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(DATA_CHANGED_AT, nowIso())
-  }
 
   private audit(action: AuditAction, entity: string, entityId: string | undefined, summary: string) {
     this.upsert('auditEvents', { at: nowIso(), actor: ACTOR, action, entity, entityId, summary })
@@ -335,7 +307,3 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** SHA-256 of a value's JSON, for reproducibility checks on calculation runs. */
-export function hashInputs(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex')
-}

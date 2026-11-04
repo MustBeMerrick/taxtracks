@@ -1,14 +1,11 @@
 'use client'
 
-import { RefreshCw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useAppState } from '@/components/app/AppStateProvider'
-import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
+import { FILING_STATUS_LABELS, type FilingStatus } from '@/lib/core/filing-status'
 import { pageTitleFor } from '@/components/app/nav'
 import { Mark } from '@/components/brand/Logo'
-import { Select } from '@/components/ui/controls'
-
-const timestamp = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+import { Segmented, Select } from '@/components/ui/controls'
 
 export function TopBar() {
   const app = useAppState()
@@ -26,10 +23,11 @@ export function TopBar() {
         </span>
         <div>
           <h1>{title}</h1>
-          <p className="tt-topbar-subtitle">
-            Tax year {app.taxYear} · {FILING_STATUS_LABELS[app.filingStatus]}
-            {app.scope !== 'household' && <> · Viewing {app.scopeLabel}</>}
-          </p>
+          {app.scope === 'household' && (
+            <p className="tt-topbar-subtitle">
+              Tax year {app.taxYear} · {FILING_STATUS_LABELS[app.filingStatus]}
+            </p>
+          )}
         </div>
       </div>
 
@@ -42,32 +40,15 @@ export function TopBar() {
           options={app.taxYears.map((y) => ({ value: y, label: String(y) }))}
           onChange={app.setTaxYear}
         />
-        <Select label="Scope" hideLabel className="tt-topbar-scope" value={app.scope} options={scopeOptions} onChange={app.setScope} />
-
-        <div className="tt-recalc">
-          <span className="tt-recalc-time">
-            {app.lastCalculatedAt ? 'Last calculated' : 'Not yet calculated'}
-            {app.lastCalculatedAt && (
-              <>
-                <br />
-                <span className="num">{timestamp.format(app.lastCalculatedAt)}</span>
-              </>
-            )}
-            {app.lastCalculatedAt && app.isStale && <span className="tt-stale"> · Data changed</span>}
-          </span>
-          <button
-            type="button"
-            className={`tt-button${app.isStale ? ' tt-button--stale' : ''}`}
-            onClick={app.recalculate}
-            disabled={app.isRecalculating}
-            title={app.isStale ? 'Data changed since the last calculation' : 'Results are up to date'}
-          >
-            <RefreshCw size={16} className={app.isRecalculating ? 'tt-spin' : undefined} aria-hidden="true" />
-            <span className="tt-recalc-label">Recalculate</span>
-            {app.isStale && <span className="visually-hidden"> (data changed since last calculation)</span>}
-          </button>
-        </div>
-
+        <Select<FilingStatus>
+          label="Filing status"
+          hideLabel
+          className="tt-topbar-filing"
+          value={app.filingStatus}
+          options={Object.entries(FILING_STATUS_LABELS).map(([value, label]) => ({ value: value as FilingStatus, label }))}
+          onChange={app.setFilingStatus}
+        />
+        <Segmented label="View" className="tt-topbar-scope" value={app.scope} options={scopeOptions} onChange={app.setScope} />
       </div>
     </header>
   )

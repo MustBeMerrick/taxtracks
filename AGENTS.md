@@ -81,7 +81,7 @@ src/proxy.ts          auth gate for every non-static request (skipped in dev)
 src/components/       UI; client components start with 'use client'
 src/lib/core/         PURE logic — money (integer cents), Overview model, domain types. Unit-tested.
 src/lib/db.ts         SQLite open + numbered migrations (PRAGMA user_version)
-src/lib/repository.ts all data access; stamps metadata, audit log, data-changed marker
+src/lib/repository.ts all data access; stamps metadata and the audit log
 src/lib/data.ts       server-only lazy singleton (never opened at build time)
 src/lib/fixtures/     sample household seeded into an empty database
 src/styles/tokens.css brand + light/dark tokens (spec §2.2–2.4)
@@ -103,8 +103,8 @@ deploy/               Dockerfile, compose.yml, deploy.sh, env.example
 Each domain table stores the full record as JSON in `data`, with `tax_year` pulled
 out and indexed. Promote a field to a column when a query needs it. Schema changes
 append a migration to `MIGRATIONS` in `src/lib/db.ts`; never edit a shipped one.
-Recalculate saves a `CalculationRun` snapshot; the header flags results stale when
-data changed after the latest run.
+Every figure is computed live from the records on each request; there is no Recalculate step.
+The `calculation_runs` table and `meta.dataChangedAt` are legacy (kept for schema/backups, no longer written).
 
 ## Brand
 

@@ -18,8 +18,7 @@
   line-height: 1.9;
 }
 
-.tt-sample-banner,
-.tt-scope-banner {
+.tt-sample-banner {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -29,12 +28,6 @@
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 13px;
-}
-
-.tt-scope-banner {
-  border-style: solid;
-  background: var(--accent-soft);
-  color: var(--text-primary);
 }
 
 /* KPI row */
@@ -164,13 +157,7 @@
   grid-column: span 8;
 }
 
-.tt-area-income {
-  grid-column: span 4;
-}
-
-.tt-area-fedstate,
-.tt-area-invest,
-.tt-area-withholding {
+.tt-area-invest {
   grid-column: span 4;
 }
 
@@ -403,47 +390,6 @@
   border: 2px solid var(--swatch);
 }
 
-/* Horizontal bars */
-
-.tt-hbars {
-  display: grid;
-  gap: var(--space-4);
-  margin: var(--space-2) 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tt-hbars li {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.tt-hbar-label {
-  font-weight: 500;
-}
-
-.tt-hbar-track {
-  height: 20px;
-  background: var(--surface-inset);
-  border-radius: 0 4px 4px 0;
-}
-
-.tt-hbar-fill {
-  display: block;
-  height: 100%;
-  background: var(--series-1);
-  border-radius: 0 4px 4px 0;
-}
-
-.tt-hbar-value {
-  min-width: 70px;
-  font-weight: 600;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Tables */
 
 .tt-table-scroll {
@@ -641,18 +587,9 @@
     grid-column: span 12;
   }
 
-  .tt-area-income,
+  .tt-area-invest,
   .tt-area-activity {
     grid-column: span 6;
-  }
-
-  .tt-area-fedstate,
-  .tt-area-withholding {
-    grid-column: span 6;
-  }
-
-  .tt-area-invest {
-    grid-column: span 12;
   }
 
   .tt-overview-grid {
@@ -705,7 +642,36 @@
   z-index: 2;
 }
 
-/* A person's share of the joint return (person scope only). */
+/* Top row: (a person's share of the joint return,) income composition and withholding; wraps when narrow. */
+.tt-overview-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.tt-overview-top > * {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+/* The share card hugs its table instead of stretching. */
+.tt-allocation {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tt-overview-top > .tt-allocation {
+  flex: 0 1 auto;
+}
+
+/* Text wraps to the table's width rather than widening the card. */
+.tt-allocation p {
+  width: 0;
+  min-width: 100%;
+}
+
 .tt-allocation-lead {
   margin: 0 0 var(--space-3);
   color: var(--text-secondary);

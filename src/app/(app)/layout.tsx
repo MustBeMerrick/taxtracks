@@ -10,8 +10,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const repository = getRepository()
   const year = await selectedYear()
   const years = repository.taxYears()
-  const latestRun = repository.latestRun(year)
-  const changedAt = repository.dataChangedAt()
 
   const shell: ShellData = {
     taxYear: year,
@@ -19,8 +17,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     filingStatus: years.find((t) => t.year === year)?.filingStatus ?? 'mfj',
     taxpayers: repository.all('taxpayers').map((t) => ({ id: t.id, name: t.name })),
     isSample: repository.isSample(),
-    lastCalculatedAt: latestRun?.ranAt ?? null,
-    isStale: !latestRun || (changedAt !== null && changedAt > latestRun.ranAt),
   }
 
   return (

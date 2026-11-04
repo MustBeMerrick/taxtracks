@@ -195,7 +195,7 @@ function main(args: string[]) {
     console.error(`Rolled back; database unchanged. ${err instanceof Error ? err.message : String(err)}`)
     process.exit(1)
   }
-  console.log(`Applied: ${todo.length} paystubs reclassified, ${todo.length} audit events written, all reconciled. Recalculate in the app.`)
+  console.log(`Applied: ${todo.length} paystubs reclassified, ${todo.length} audit events written, all reconciled.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main(process.argv.slice(2))

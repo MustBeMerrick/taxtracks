@@ -1,11 +1,11 @@
 'use client'
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-import { recalculate as recalculateAction, selectTaxYear, setFilingStatus as setFilingStatusAction } from '@/app/actions'
+import { selectTaxYear, setFilingStatus as setFilingStatusAction } from '@/app/actions'
 import type { FilingStatus } from '@/lib/core/filing-status'
 import { useScheduleRefresh } from '@/lib/refresh-context'
 
-// Shell-level selections and calculation status. The server (app)/layout
+// Shell-level selections. The server (app)/layout
 // loads the persisted parts; scope is a per-viewer UI choice kept here.
 
 export interface TaxpayerRef {
@@ -23,21 +23,14 @@ export interface ShellData {
   filingStatus: FilingStatus
   taxpayers: TaxpayerRef[]
   isSample: boolean
-  /** ISO timestamp of the latest saved calculation, if any. */
-  lastCalculatedAt: string | null
-  /** Data changed since the last saved calculation (or none saved yet). */
-  isStale: boolean
 }
 
-interface AppState extends Omit<ShellData, 'lastCalculatedAt'> {
+interface AppState extends ShellData {
   setTaxYear: (year: number) => void
   setFilingStatus: (status: FilingStatus) => void
   scope: Scope
   setScope: (scope: Scope) => void
   scopeLabel: string
-  lastCalculatedAt: Date | null
-  isRecalculating: boolean
-  recalculate: () => void
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -45,7 +38,6 @@ const AppStateContext = createContext<AppState | null>(null)
 export function AppStateProvider({ shell, children }: { shell: ShellData; children: ReactNode }) {
   const scheduleRefresh = useScheduleRefresh()
   const [selectedScope, setScope] = useState<Scope>('household')
-  const [isRecalculating, setIsRecalculating] = useState(false)
 
   // A taxpayer removed from the data can't stay selected.
   const scope: Scope = shell.taxpayers.some((t) => t.id === selectedScope) ? selectedScope : 'household'
@@ -66,16 +58,6 @@ export function AppStateProvider({ shell, children }: { shell: ShellData; childr
     [shell.taxYear, scheduleRefresh],
   )
 
-  const recalculate = useCallback(async () => {
-    setIsRecalculating(true)
-    try {
-      await recalculateAction(shell.taxYear)
-      scheduleRefresh()
-    } finally {
-      setIsRecalculating(false)
-    }
-  }, [shell.taxYear, scheduleRefresh])
-
   const value = useMemo<AppState>(
     () => ({
       ...shell,
@@ -84,11 +66,8 @@ export function AppStateProvider({ shell, children }: { shell: ShellData; childr
       scope,
       setScope,
       scopeLabel: shell.taxpayers.find((t) => t.id === scope)?.name ?? 'Household',
-      lastCalculatedAt: shell.lastCalculatedAt ? new Date(shell.lastCalculatedAt) : null,
-      isRecalculating,
-      recalculate: () => void recalculate(),
     }),
-    [shell, setTaxYear, setFilingStatus, scope, isRecalculating, recalculate],
+    [shell, setTaxYear, setFilingStatus, scope],
   )
 
   return <AppStateContext value={value}>{children}</AppStateContext>

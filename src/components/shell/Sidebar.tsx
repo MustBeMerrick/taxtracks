@@ -2,14 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAppState } from '@/components/app/AppStateProvider'
-import { FILING_STATUS_LABELS, type FilingStatus } from '@/lib/core/filing-status'
 import { NAV_ITEMS, navItemFor } from '@/components/app/nav'
 import { Logo, Mark } from '@/components/brand/Logo'
-import { Segmented, Select } from '@/components/ui/controls'
 
 export function Sidebar() {
-  const app = useAppState()
   const main = NAV_ITEMS.filter((item) => !item.footer)
   const footer = NAV_ITEMS.filter((item) => item.footer)
 
@@ -36,29 +32,6 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="tt-sidebar-controls">
-        <Select
-          label="Tax year"
-          value={app.taxYear}
-          options={app.taxYears.map((y) => ({ value: y, label: String(y) }))}
-          onChange={app.setTaxYear}
-        />
-        <Select<FilingStatus>
-          label="Filing status"
-          value={app.filingStatus}
-          options={Object.entries(FILING_STATUS_LABELS).map(([value, label]) => ({ value: value as FilingStatus, label }))}
-          onChange={app.setFilingStatus}
-        />
-        <div>
-          <span className="tt-field-label">View</span>
-          <Segmented
-            label="View"
-            value={app.scope}
-            options={[{ value: 'household', label: 'Household' }, ...app.taxpayers.map((t) => ({ value: t.id, label: t.name }))]}
-            onChange={app.setScope}
-          />
-        </div>
-      </div>
     </aside>
   )
 }

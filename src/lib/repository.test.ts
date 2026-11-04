@@ -143,13 +143,10 @@ describe('TaxDataRepository', () => {
     expect(repo.all('payroll')).toEqual(exported.tables.payroll)
   })
 
-  it('stamps metadata and audit events on put, and marks data changed', async () => {
+  it('stamps metadata and audit events on put', async () => {
     repo.ensureSeeded()
-    const before = repo.dataChangedAt()
-    await new Promise((r) => setTimeout(r, 5))
     const saved = repo.put('otherIncome', { id: 'x1', taxYear: 2026, label: 'Jury duty', owner: 'marc', amount: 4_000, status: 'actual' })
     expect(saved.createdAt).toBe(saved.updatedAt)
-    expect(repo.dataChangedAt()! > before!).toBe(true)
     expect(repo.recentAudit().some((e) => e.action === 'create' && e.entityId === 'x1')).toBe(true)
 
     await new Promise((r) => setTimeout(r, 5))
@@ -164,15 +161,6 @@ describe('TaxDataRepository', () => {
     // A non-JSON-serialisable value (BigInt) makes the write throw mid-transaction.
     expect(() => repo.put('otherIncome', { taxYear: 2026, label: 'bad', owner: 'joint', amount: 1n as unknown as number, status: 'actual' })).toThrow()
     expect(repo.count('otherIncome')).toBe(before)
-  })
-
-  it('saves calculation runs without marking data changed', () => {
-    repo.ensureSeeded()
-    const changed = repo.dataChangedAt()
-    const zero = { federal: 0, ca: 0 }
-    repo.saveRun({ taxYear: 2026, ranAt: new Date().toISOString(), inputsHash: 'h', rulesVersion: 'none', outputs: { liability: zero, payments: zero, refund: zero } })
-    expect(repo.dataChangedAt()).toBe(changed)
-    expect(repo.latestRun(2026)?.inputsHash).toBe('h')
   })
 
   it('clearAll leaves an empty, non-sample household with a tax year', () => {

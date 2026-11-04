@@ -1,6 +1,5 @@
 'use client'
 
-import { Users } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { setAllocationMethod } from '@/app/actions'
@@ -8,11 +7,10 @@ import { useAppState } from '@/components/app/AppStateProvider'
 import { AllocationCard } from '@/components/overview/AllocationCard'
 import { IncomeComposition } from '@/components/overview/IncomeComposition'
 import { Kpis } from '@/components/overview/Kpis'
-import { FederalVsState, InvestmentTable, PaycheckSummary, RecentActivity, WithholdingProgress } from '@/components/overview/Panels'
+import { InvestmentTable, PaycheckSummary, RecentActivity, WithholdingProgress } from '@/components/overview/Panels'
 import { PaymentsChart } from '@/components/overview/PaymentsChart'
 import { Card } from '@/components/ui/Card'
 import type { AllocationMethod, LiabilityAllocation } from '@/lib/core/liability-allocation'
-import { formatPercent } from '@/lib/core/money'
 import { buildOverview, type OverviewInput } from '@/lib/core/overview'
 import '@/components/overview/overview.css'
 
@@ -29,6 +27,7 @@ export function OverviewView({
 }) {
   const { scope, scopeLabel, taxYear, isSample } = useAppState()
   const [method, setMethod] = useState<AllocationMethod>(initialMethod)
+  const person = scope !== 'household'
   const model = useMemo(() => buildOverview({ ...data, allocation: allocations?.[method] }, scope), [data, allocations, method, scope])
 
   function changeMethod(next: AllocationMethod) {
@@ -63,23 +62,18 @@ export function OverviewView({
           Sample data: figures are illustrative, not tax calculations. Clear it in Settings › Data when you start entering your own.
         </p>
       )}
-      {scope !== 'household' && (
-        <p className="tt-scope-banner" role="note">
-          <Users size={16} aria-hidden="true" />
-          Viewing {scopeLabel}: income, paychecks and withholding are {scopeLabel}’s. Liability is {scopeLabel}’s {formatPercent(model.liabilityShare)} share of
-          the joint estimate, {model.allocation?.method === 'source_attributed' ? 'split by source' : 'proportional to income'}.
-        </p>
-      )}
       <Kpis model={model} />
-      {scope !== 'household' && (
-        <AllocationCard model={model} name={scopeLabel} method={method} onMethodChange={changeMethod} canAttribute={allocations !== null} />
-      )}
+      {/* Income and withholding lead; a person's view also shows their share of the joint return. */}
+      <div className="tt-overview-top">
+        {person && (
+          <AllocationCard model={model} name={scopeLabel} method={method} onMethodChange={changeMethod} canAttribute={allocations !== null} />
+        )}
+        <IncomeComposition model={model} />
+        <WithholdingProgress model={model} />
+      </div>
       <div className="tt-overview-grid">
         <PaymentsChart model={model} />
-        <IncomeComposition model={model} />
-        <FederalVsState model={model} />
         <InvestmentTable model={model} />
-        <WithholdingProgress model={model} />
         <PaycheckSummary model={model} />
         <RecentActivity items={model.activity} year={taxYear} />
       </div>

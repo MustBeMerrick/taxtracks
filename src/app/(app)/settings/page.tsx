@@ -13,7 +13,6 @@ export default function SettingsPage() {
         counts: {
           paychecks: repository.count('payroll'),
           investments: repository.count('investmentSummaries'),
-          runs: repository.count('calculationRuns'),
         },
         audit: repository.recentAudit(),
       }}
