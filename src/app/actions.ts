@@ -6,6 +6,7 @@ import type { FilingStatus } from '@/lib/core/filing-status'
 import { FILING_STATUS_LABELS } from '@/lib/core/filing-status'
 import { buildOverview } from '@/lib/core/overview'
 import type { Cents } from '@/lib/core/money'
+import { DEDUCTION_CATEGORIES, type DeductionCategory } from '@/lib/core/income-summary'
 import { investmentId, matchingEntries, validateInvestmentEntry, type InvestmentEntryInput } from '@/lib/core/investments'
 import { benefitsTotal } from '@/lib/core/payroll'
 import type { PaystubBenefits } from '@/lib/core/types'
@@ -161,6 +162,20 @@ export async function commitWithholdingSimulation(updates: SimulatedWithholdingU
     applied += 1
   }
   return { ok: true, message: `Updated ${applied} paycheck${applied === 1 ? '' : 's'}.` }
+}
+
+/** Saves one household itemized-deduction total (property tax, mortgage interest, charity) for the selected year. */
+export async function saveDeduction(category: DeductionCategory, amount: Cents): Promise<ActionResult> {
+  await requireSession()
+  const repository = getRepository()
+  if (!(DEDUCTION_CATEGORIES as readonly string[]).includes(category)) return { ok: false, message: 'Unknown deduction.' }
+  if (!isCents(amount)) return { ok: false, message: 'Enter zero or a positive amount.' }
+  const year = await selectedYear()
+  if (!repository.taxYears().some((t) => t.year === year)) return { ok: false, message: 'Pick a tax year first.' }
+  const id = `deduction-${year}-${category}`
+  const existing = repository.get('deductions', id)
+  repository.put('deductions', { ...existing, id, taxYear: year, owner: 'household', category, amount, status: 'manual_estimate' })
+  return { ok: true, message: 'Saved.' }
 }
 
 /** Saves one person's brokerage results (estimate or final 1099 numbers) for the selected tax year. */

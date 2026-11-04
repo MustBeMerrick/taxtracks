@@ -32,6 +32,18 @@ export interface IncomeRules {
   californiaRates: Partial<Record<FilingStatus, CaRateRow[]>>
   /** California personal exemption credit. */
   californiaExemptionCredit: Record<FilingStatus, Cents>
+  /**
+   * Federal state-and-local-tax itemized deduction (One Big Beautiful Bill Act, 2025–2029): capped at `saltCap`,
+   * the cap reduced by `saltPhaseoutRate` of modified AGI over `saltPhaseoutStart`, but never below `saltFloor`.
+   */
+  saltCap: Record<FilingStatus, Cents>
+  saltPhaseoutStart: Record<FilingStatus, Cents>
+  saltPhaseoutRate: number
+  saltFloor: Record<FilingStatus, Cents>
+  /** From 2026, itemized charitable gifts count only above this share of AGI. */
+  charitableFloorRate: number
+  /** From 2026, cash gifts to charity are deductible up to this much by someone taking the standard deduction. */
+  nonItemizerCharityCap: Record<FilingStatus, Cents>
 }
 
 const bracketsFrom = (rows: [number, number][]): Bracket[] => rows.map(([over, rate]) => ({ over: cents(over), rate }))
@@ -103,6 +115,13 @@ const RULES_2026: IncomeRules = {
   californiaRates: { single: CA_SINGLE_2026, mfs: CA_SINGLE_2026, mfj: CA_MFJ_2026, qss: CA_MFJ_2026 },
   // $158 per personal exemption; joint filers get two. (The phaseout starts far above this household's AGI.)
   californiaExemptionCredit: { single: cents(158), mfj: cents(316), mfs: cents(158), hoh: cents(158), qss: cents(316) },
+  // 2026: the $40,000 2025 cap and $500,000 threshold, each up 1% (IRS 2026 Form 1040-ES).
+  saltCap: { single: cents(40_400), mfj: cents(40_400), mfs: cents(20_200), hoh: cents(40_400), qss: cents(40_400) },
+  saltPhaseoutStart: { single: cents(505_000), mfj: cents(505_000), mfs: cents(252_500), hoh: cents(505_000), qss: cents(505_000) },
+  saltPhaseoutRate: 0.3,
+  saltFloor: { single: cents(10_000), mfj: cents(10_000), mfs: cents(5_000), hoh: cents(10_000), qss: cents(10_000) },
+  charitableFloorRate: 0.005,
+  nonItemizerCharityCap: { single: cents(1_000), mfj: cents(2_000), mfs: cents(1_000), hoh: cents(1_000), qss: cents(1_000) },
 }
 
 const RULES_BY_YEAR: Record<number, IncomeRules> = { 2026: RULES_2026 }

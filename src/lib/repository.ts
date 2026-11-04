@@ -125,7 +125,14 @@ export class TaxDataRepository {
     // otherwise whatever was stored (hand-entered placeholders) is used.
     const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
     const computed = filingStatus
-      ? estimateHouseholdTax(year, filingStatus, { taxpayerIds: taxpayers.map((t) => t.id), payroll, investments, carryovers: this.all('carryovers', year) })
+      ? estimateHouseholdTax(year, filingStatus, {
+          taxpayerIds: taxpayers.map((t) => t.id),
+          payroll,
+          investments,
+          carryovers: this.all('carryovers', year),
+          deductions: this.all('deductions', year),
+          taxPayments: this.all('taxPayments'),
+        })
       : null
     return {
       year,

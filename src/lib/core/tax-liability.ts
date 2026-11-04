@@ -1,8 +1,8 @@
 import type { FilingStatus } from './filing-status'
 import { getIncomeRules, type Bracket } from './income-rules'
-import { brokerageAnnuals, calculateIncomeSummary, payrollAnnuals, type IncomeSummary } from './income-summary'
+import { brokerageAnnuals, calculateIncomeSummary, itemizedAnnuals, payrollAnnuals, type IncomeSummary } from './income-summary'
 import { applyRate, cents, type Cents } from './money'
-import type { Carryover, InvestmentSourceSummary, LiabilityEstimate, PayrollRecord } from './types'
+import type { Carryover, Deduction, InvestmentSourceSummary, LiabilityEstimate, PayrollRecord, TaxPayment } from './types'
 
 /*
  * Estimated income-tax liability for the household, from the income summary (taxable income) and the
@@ -70,7 +70,7 @@ export function estimateTax(input: TaxEstimateInput): TaxEstimate | null {
   const capitalGainsTax = applyRate(band(gains.zeroTop, gains.fifteenTop), 0.15) + applyRate(band(gains.fifteenTop, Infinity), 0.2)
 
   // Net investment income tax: 3.8% of the lesser of net investment income and AGI over the threshold.
-  const agi = s.federalOrdinaryTaxable + s.federalStandardDeduction + s.ltcgIncome
+  const agi = s.federalAgi
   const netInvestmentIncome = Math.max(0, s.ordinaryIncome - s.baseSalary + s.ltcgIncome - s.capitalLossAllowed) // dividends + net gains
   const niit = applyRate(Math.min(netInvestmentIncome, Math.max(0, agi - rules.niitThreshold[input.filingStatus])), rules.niitRate)
 
@@ -105,7 +105,15 @@ export function estimateTax(input: TaxEstimateInput): TaxEstimate | null {
 export function estimateHouseholdTax(
   taxYear: number,
   filingStatus: FilingStatus,
-  records: { taxpayerIds: string[]; payroll: PayrollRecord[]; investments: InvestmentSourceSummary[]; carryovers: Carryover[] },
+  records: {
+    taxpayerIds: string[]
+    payroll: PayrollRecord[]
+    investments: InvestmentSourceSummary[]
+    carryovers: Carryover[]
+    deductions: Deduction[]
+    /** Every year's tax payments: deductibility goes by the date paid. */
+    taxPayments: TaxPayment[]
+  },
 ) {
   const carry = (kind: Carryover['kind']) => records.carryovers.find((c) => c.kind === kind)?.amount ?? 0
   const people = records.taxpayerIds.map((id) => payrollAnnuals(records.payroll.filter((p) => p.taxpayerId === id)))
@@ -115,6 +123,7 @@ export function estimateHouseholdTax(
     filingStatus,
     ...total,
     ...brokerage,
+    ...itemizedAnnuals(taxYear, records.deductions, records.taxPayments),
     carryoverShort: carry('capital_loss_short'),
     carryoverLong: carry('capital_loss_long'),
   })

@@ -12,12 +12,16 @@ export default async function Page() {
   const repository = getRepository()
   const data = repository.yearData(year)
   const carryovers = repository.all('carryovers', year)
+  const deductions = repository.all('deductions', year)
+  const taxPayments = repository.all('taxPayments')
   const filingStatus = repository.taxYears().find((t) => t.year === year)?.filingStatus ?? 'mfj'
   const household = estimateHouseholdTax(year, filingStatus, {
     taxpayerIds: data.taxpayers.map((t) => t.id),
     payroll: data.payroll,
     investments: data.investments,
     carryovers,
+    deductions,
+    taxPayments,
   })
   return (
     <div className="tt-stubs">
@@ -27,11 +31,14 @@ export default async function Page() {
         investments={data.investments}
         paystubs={data.payroll}
         carryovers={carryovers}
+        deductions={deductions}
+        taxPayments={taxPayments}
         filingStatus={filingStatus}
       />
       {household && (
         <TaxEstimateCard
           estimate={household.estimate}
+          summary={household.summary}
           withheld={{
             federal: data.payroll.reduce((t, p) => t + p.federalWithholding, 0),
             ca: data.payroll.reduce((t, p) => t + p.caWithholding, 0),
