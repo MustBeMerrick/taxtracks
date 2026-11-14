@@ -59,6 +59,11 @@ export interface PayrollRecord extends RecordMeta {
   payDate: IsoDate
   /** An extra paycheck on top of the regular ones (annual bonus); it may share a pay date with a regular paycheck. */
   bonus?: boolean
+  /**
+   * Taxable income that isn't subject to payroll tax, e.g. the ordinary income from a disqualifying ISO sale. It counts as
+   * wages for income tax but not as Social Security / Medicare / SDI wages; the stub's payroll tax lines are zero.
+   */
+  noPayrollTax?: boolean
   status: Provenance
   gross: Cents
   /** Pre-tax HSA + 401(k) + other pre-tax deductions. Equals the sum of `benefits` when that is present. */

@@ -263,3 +263,38 @@ describe('Overview with an allocation', () => {
     expect(shares[0] + shares[1]).toBe(cents(2_000))
   })
 })
+
+describe('no-payroll-tax stubs (an ISO sale)', () => {
+  const iso = (flag: boolean, owner = 'marc'): PayrollRecord => ({
+    ...records().payroll.find((p) => p.taxpayerId === owner)!,
+    id: 'iso',
+    payDate: '2026-12-10',
+    bonus: true,
+    gross: cents(85_573),
+    preTax: 0,
+    benefits: undefined,
+    gtli: 0,
+    employerHsa: 0,
+    federalWithholding: 0,
+    caWithholding: 0,
+    socialSecurity: 0,
+    medicare: 0,
+    caSdi: 0,
+    ...(flag ? { noPayrollTax: true } : {}),
+  })
+  const withStub = (flag: boolean, owner = 'marc') =>
+    estimateHouseholdTax(2026, 'mfj', { ...records(), payroll: [...records().payroll, iso(flag, owner)] })!.estimate.federal
+  const base = estimateHouseholdTax(2026, 'mfj', records())!.estimate.federal
+
+  it('adds income tax but no Additional Medicare when flagged', () => {
+    const flagged = withStub(true)
+    expect(flagged.additionalMedicare).toBe(base.additionalMedicare)
+    expect(flagged.ordinaryTax).toBeGreaterThan(base.ordinaryTax)
+    expect(flagged.niit).toBe(base.niit)
+  })
+
+  it("without the flag, Mae's ISO income would wrongly add Additional Medicare (she is under $200k, so no employer withheld any)", () => {
+    expect(withStub(false, 'mae').additionalMedicare).toBeGreaterThan(base.additionalMedicare)
+    expect(withStub(true, 'mae').additionalMedicare).toBe(base.additionalMedicare)
+  })
+})

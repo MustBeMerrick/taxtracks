@@ -55,7 +55,8 @@ export function simulateWithholding(
   election: WithholdingElectionInput,
   taxYear: number,
 ): WithholdingSimulation {
-  const sorted = sortPaystubs(records)
+  // A no-payroll-tax stub (an ISO sale) isn't a paycheck: elections never apply to it and it carries no FICA wages.
+  const sorted = sortPaystubs(records.filter((r) => !r.noPayrollTax))
   let ytdFicaWages = sum(sorted.filter(isPaidOut).map(storedFicaWages))
 
   const b = election.benefits

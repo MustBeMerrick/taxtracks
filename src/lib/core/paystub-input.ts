@@ -12,6 +12,8 @@ export interface PaystubInput {
   paidOut: boolean
   /** An extra bonus paycheck rather than a regular one. */
   bonus?: boolean
+  /** Taxable income with no payroll tax (an ISO sale): Social Security, Medicare and SDI must be zero. */
+  noPayrollTax?: boolean
   gross: Cents
   benefits: PaystubBenefits
   afterTax: AfterTaxDeductions
@@ -52,6 +54,9 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
     return { ok: false, error: 'Amounts must be zero or more.' }
   }
   if (input.gross <= 0) return { ok: false, error: 'Enter the gross pay.' }
+  if (input.noPayrollTax && (input.socialSecurity > 0 || input.medicare > 0 || input.caSdi > 0)) {
+    return { ok: false, error: 'Social Security, Medicare and SDI must be zero on a no-payroll-tax stub.' }
+  }
 
   const preTax = benefitsTotal(input.benefits)
   if (preTax > input.gross) return { ok: false, error: 'Pre-tax deductions are more than gross pay.' }
@@ -65,6 +70,7 @@ export function validatePaystub(input: PaystubInput, knownTaxpayerIds: string[],
       employer: input.employer.trim(),
       payDate: input.payDate,
       bonus: input.bonus === true,
+      ...(input.noPayrollTax ? { noPayrollTax: true } : {}),
       status: input.paidOut ? 'actual' : 'projected',
       gross: input.gross,
       preTax,

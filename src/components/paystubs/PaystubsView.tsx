@@ -205,6 +205,7 @@ function PersonLedger({
                     <th scope="row">
                       {formatPayDate(record.payDate)}
                       {record.bonus && <span className="tt-stubs-badge">Bonus</span>}
+                      {record.noPayrollTax && <span className="tt-stubs-badge">No payroll tax</span>}
                     </th>
                     <td className="tt-stubs-center-col">
                       <label className="tt-stubs-paid">

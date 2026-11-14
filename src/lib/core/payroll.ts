@@ -204,7 +204,7 @@ export function payrollWarnings(records: PayrollRecord[], today: string): Payrol
   // Two regular paychecks on one date is probably a duplicate; a bonus paycheck legitimately shares a date.
   const seenDates = new Map<string, PayrollRecord>()
   for (const r of rows) {
-    if (!r.bonus) {
+    if (!r.bonus && !r.noPayrollTax) {
       const dup = seenDates.get(r.payDate)
       if (dup) {
         warnings.push({ id: `dup-${r.id}`, severity: 'warning', recordId: r.id, message: `Two regular paystubs are dated ${formatPayDate(r.payDate)}. Is one a duplicate?` })
@@ -226,7 +226,7 @@ export function payrollWarnings(records: PayrollRecord[], today: string): Payrol
     }
   }
 
-  const offSchedule = rows.filter((r) => !isSemiMonthlyPayDate(r.payDate))
+  const offSchedule = rows.filter((r) => !r.noPayrollTax && !isSemiMonthlyPayDate(r.payDate))
   if (offSchedule.length > 0) {
     const shown = offSchedule.slice(0, 3).map((r) => formatPayDate(r.payDate)).join(', ')
     warnings.push({

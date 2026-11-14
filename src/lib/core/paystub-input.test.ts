@@ -56,3 +56,18 @@ describe('validatePaystub', () => {
     expect(validatePaystub({ ...good, ...patch }, ['marc'], [2026]).ok).toBe(false)
   })
 })
+
+describe('no-payroll-tax stubs', () => {
+  const iso = { ...good, gross: cents(85_573), benefits: EMPTY_BENEFITS, federalWithholding: 0, socialSecurity: 0, medicare: 0, caSdi: 0, noPayrollTax: true }
+
+  it('records the flag only when set', () => {
+    const r = validatePaystub(iso, ['marc'], [2026])
+    expect(r.ok && r.fields.noPayrollTax).toBe(true)
+    const regular = validatePaystub(good, ['marc'], [2026])
+    expect(regular.ok && 'noPayrollTax' in regular.fields).toBe(false)
+  })
+
+  it.each([['socialSecurity'], ['medicare'], ['caSdi']])('rejects %s withheld on a flagged stub', (key) => {
+    expect(validatePaystub({ ...iso, [key]: cents(1) }, ['marc'], [2026]).ok).toBe(false)
+  })
+})

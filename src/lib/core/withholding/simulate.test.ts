@@ -96,3 +96,15 @@ describe('simulateWithholding benefit lines', () => {
     expect(stored.gross - stored.preTax - stored.federalWithholding - stored.caWithholding - stored.socialSecurity - stored.medicare - stored.caSdi).toBe(p.simulated.net)
   })
 })
+
+describe('simulateWithholding with a no-payroll-tax stub', () => {
+  it('never applies elections to it or counts it toward FICA wages', () => {
+    const records = [
+      stub('a', '2026-01-15', { status: 'actual' }),
+      stub('iso', '2026-12-10', { gross: cents(85_573), noPayrollTax: true, socialSecurity: 0, medicare: 0, caSdi: 0 }),
+      stub('b', '2026-12-15'),
+    ]
+    const sim = simulateWithholding(records, election(), 2026)
+    expect(sim.paychecks.map((p) => p.record.id)).toEqual(['b'])
+  })
+})

@@ -37,6 +37,7 @@ interface FormState extends Record<MoneyKey, string> {
   employer: string
   paidOut: boolean
   bonus: boolean
+  noPayrollTax: boolean
   notes: string
 }
 
@@ -50,6 +51,7 @@ function initialState(record: PayrollRecord | undefined, lastEmployer: string, d
     employer: record?.employer ?? lastEmployer,
     paidOut: record ? record.status === 'actual' : false,
     bonus: record?.bonus === true,
+    noPayrollTax: record?.noPayrollTax === true,
     notes: record?.notes ?? '',
     gross: dollars(record?.gross),
     federal: dollars(record?.federalWithholding),
@@ -142,6 +144,7 @@ export function PaystubDialog({
       payDate: form.payDate,
       paidOut: form.paidOut,
       bonus: form.bonus,
+      noPayrollTax: form.noPayrollTax,
       gross: value('gross'),
       benefits,
       afterTax,
@@ -249,6 +252,12 @@ export function PaystubDialog({
               <input type="checkbox" checked={form.bonus} onChange={(e) => set('bonus', e.target.checked)} />
               <span>
                 <strong>Bonus</strong>: an extra paycheck on top of the regular one (can share its pay date)
+              </span>
+            </label>
+            <label className="tt-calc-check">
+              <input type="checkbox" checked={form.noPayrollTax} onChange={(e) => set('noPayrollTax', e.target.checked)} />
+              <span>
+                <strong>No payroll tax</strong>: taxable income with no Social Security, Medicare or SDI, e.g. a disqualifying ISO sale (leave those three at zero)
               </span>
             </label>
           </fieldset>

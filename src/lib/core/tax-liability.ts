@@ -128,7 +128,7 @@ export function estimateHouseholdTax(
     carryoverLong: carry('capital_loss_long'),
   })
   if (!summary) return null
-  const medicareWages = people.map((p) => Math.max(0, p.salary - p.section125 - p.hsa + p.gtli))
+  const medicareWages = people.map((p) => Math.max(0, p.salary - p.nonPayrollTaxWages - p.section125 - p.hsa + p.gtli))
   const estimate = estimateTax({ taxYear, filingStatus, summary, dividends: brokerage.dividends, medicareWages })
   return estimate && { summary, estimate }
 }
