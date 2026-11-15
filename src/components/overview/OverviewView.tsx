@@ -10,7 +10,7 @@ import { Kpis } from '@/components/overview/Kpis'
 import { InvestmentTable, PaycheckSummary, RecentActivity, WithholdingProgress } from '@/components/overview/Panels'
 import { PaymentsChart } from '@/components/overview/PaymentsChart'
 import { Card } from '@/components/ui/Card'
-import type { AllocationMethod, LiabilityAllocation } from '@/lib/core/liability-allocation'
+import { DEFAULT_ALLOCATION_METHOD, type AllocationMethod, type LiabilityAllocation } from '@/lib/core/liability-allocation'
 import { buildOverview, type OverviewInput } from '@/lib/core/overview'
 import '@/components/overview/overview.css'
 
@@ -21,12 +21,14 @@ export function OverviewView({
   initialMethod,
 }: {
   data: OverviewInput
-  /** Both splits of the joint liability, from the server (null when the engine has no tables for the year). */
+  /** Both splits of the joint liability, from the server (null when the engine has no tables for the year, or filing separately). */
   allocations: Record<AllocationMethod, LiabilityAllocation> | null
   initialMethod: AllocationMethod
 }) {
   const { scope, scopeLabel, taxYear, isSample } = useAppState()
-  const [method, setMethod] = useState<AllocationMethod>(initialMethod)
+  const [selected, setMethod] = useState<AllocationMethod>(initialMethod)
+  // A method the server didn't send can't be shown; fall back visibly rather than label one split with another's name.
+  const method = allocations && !allocations[selected] ? DEFAULT_ALLOCATION_METHOD : selected
   const person = scope !== 'household'
   const model = useMemo(() => buildOverview({ ...data, allocation: allocations?.[method] }, scope), [data, allocations, method, scope])
 
@@ -63,7 +65,7 @@ export function OverviewView({
         </p>
       )}
       <Kpis model={model} />
-      {/* Income and withholding lead; a person's view also shows their share of the joint return. */}
+      {/* Income and withholding lead; a person's view also shows their share of the joint return, or their own separate return. */}
       <div className="tt-overview-top">
         {person && (
           <AllocationCard model={model} name={scopeLabel} method={method} onMethodChange={changeMethod} canAttribute={allocations !== null} />

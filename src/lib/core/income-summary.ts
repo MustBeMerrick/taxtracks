@@ -13,8 +13,18 @@ import type { Deduction, InvestmentSourceSummary, PayrollRecord, TaxPayment } fr
  * charitable AGI percentage limits, mortgage debt limits (enter deductible interest), medical expenses.
  */
 
+/**
+ * Standard vs. itemized: 'best' takes the larger. Married filing separately, if one spouse itemizes the other must
+ * too (federal IRC §63(c)(6)(A); California follows), so separate returns force the choice the pair makes together.
+ */
+export type DeductionChoice = 'best' | 'itemized' | 'standard'
+
 export interface IncomeSummaryInput {
   filingStatus: FilingStatus
+  /** Defaults to 'best'. */
+  federalDeductionChoice?: DeductionChoice
+  /** Defaults to 'best'. */
+  stateDeductionChoice?: DeductionChoice
   salary: Cents
   shortTermProfit: Cents
   shortTermLoss: Cents
@@ -69,6 +79,7 @@ export interface IncomeSummary {
   stateStandardDeduction: Cents
   stateItemizedDeduction: Cents
   stateDeduction: Cents
+  stateItemizes: boolean
   federalOrdinaryTaxable: Cents
   stateTaxable: Cents
   capitalLossCarryForward: Cents
@@ -122,13 +133,17 @@ export function calculateIncomeSummary(taxYear: number, input: IncomeSummaryInpu
   const federalItemizedDeduction = federalSaltAllowed + mortgageInterest + charityAllowed
   const federalStandardDeduction = rules.federalStandardDeduction[status]
   const nonItemizerCharity = Math.min(input.charityCash ?? 0, rules.nonItemizerCharityCap[status])
-  const federalItemizes = federalItemizedDeduction > federalStandardDeduction + nonItemizerCharity
+  const federalChoice = input.federalDeductionChoice ?? 'best'
+  const federalItemizes =
+    federalChoice === 'best' ? federalItemizedDeduction > federalStandardDeduction + nonItemizerCharity : federalChoice === 'itemized'
   const federalDeduction = federalItemizes ? federalItemizedDeduction : federalStandardDeduction + nonItemizerCharity
 
   // California: no deduction for its own income tax or SDI, and no SALT cap.
   const stateStandardDeduction = rules.californiaStandardDeduction[status]
   const stateItemizedDeduction = propertyTax + mortgageInterest + charity
-  const stateDeduction = Math.max(stateStandardDeduction, stateItemizedDeduction)
+  const stateChoice = input.stateDeductionChoice ?? 'best'
+  const stateItemizes = stateChoice === 'best' ? stateItemizedDeduction > stateStandardDeduction : stateChoice === 'itemized'
+  const stateDeduction = stateItemizes ? stateItemizedDeduction : stateStandardDeduction
 
   return {
     baseSalary: input.salary,
@@ -149,6 +164,7 @@ export function calculateIncomeSummary(taxYear: number, input: IncomeSummaryInpu
     stateStandardDeduction,
     stateItemizedDeduction,
     stateDeduction,
+    stateItemizes,
     // Long-term gains sit on top: the deduction comes out of ordinary income first.
     federalOrdinaryTaxable: Math.max(0, federalAgi - ltcg - federalDeduction),
     stateTaxable: Math.max(0, stateAgi - stateDeduction),

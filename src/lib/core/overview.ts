@@ -29,6 +29,8 @@ export interface OverviewInput {
   taxPayments?: TaxPayment[]
   /** How the joint liability is split for a person's view; income proportional over `liabilities` when absent. */
   allocation?: LiabilityAllocation
+  /** Married filing separately: each spouse's own liability. `liabilities` then holds their sum and nothing is allocated. */
+  separateReturns?: Record<string, { federal: Cents; ca: Cents }>
 }
 
 export type Scope = 'household' | string
@@ -92,17 +94,23 @@ export interface InvestmentRow extends InvestmentSourceSummary {
 
 export interface OverviewModel {
   scope: Scope
-  /** 1 for the household; a person's allocated share of the joint liability. */
+  /** Joint: one return, a person sees an allocated share. Separate: each spouse's own return, the household their sum. */
+  filing: 'joint' | 'separate'
+  /** 1 for the household; a person's share of the household liability. */
   liabilityShare: number
-  /** A person's view: how their share was worked out. Null for the household. */
+  /** A person's view of a joint return: how their share was worked out. Null for the household and when filing separately. */
   allocation: {
     method: AllocationMethod
     baseline: ByJurisdiction
     investment: ByJurisdiction
     /** Their share of joint estimated/extension payments (in proportion to allocated liability). */
     jointPayments: ByJurisdiction
+    /** As if separate: the tax on their own separate return, before scaling to the joint total. */
+    separateReturn?: ByJurisdiction
     note?: string
   } | null
+  /** Joint estimated/extension payments credited to this view (a person's share is in proportion to their liability). */
+  jointPayments: ByJurisdiction
   liability: ByJurisdiction
   liabilityStatus: Provenance
   payments: ByJurisdiction
@@ -168,16 +176,27 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
   // Brokerage results belong to one person; rows without an owner are legacy joint rows (household only).
   const scopedInvestments = household ? input.investments : input.investments.filter((i) => i.owner === scope)
 
-  // The household files jointly, so liability is computed once for the household. A person's view shows their
-  // allocated share of it (see liability-allocation.ts); the household view never depends on the method.
+  // Filing jointly, liability is computed once for the household. A person's view shows their allocated share of it
+  // (see liability-allocation.ts); the household view never depends on the method. Filing separately, each spouse
+  // has their own return and the household is the two added together.
   // Payments follow the person: their own paychecks' withholding, plus a share of joint estimated payments.
   const ids = input.taxpayers.map((t) => t.id)
   const jointLiability = (j: Jurisdiction) => sumBy(input.liabilities.filter((l) => l.jurisdiction === j), (l) => l.amount)
   const householdLiability = { federal: jointLiability('federal'), ca: jointLiability('ca') }
-  const allocation =
-    input.allocation ?? incomeProportional(householdLiability, ids, Object.fromEntries(ids.map((id) => [id, personalIncome(id, input)])))
-  const mine = household ? null : (allocation.people[scope] ?? null)
-  const liability = mine ? byJurisdiction(mine.total.federal, mine.total.ca) : byJurisdiction(householdLiability.federal, householdLiability.ca)
+  const separate = input.separateReturns
+  const allocation = separate
+    ? null
+    : (input.allocation ?? incomeProportional(householdLiability, ids, Object.fromEntries(ids.map((id) => [id, personalIncome(id, input)]))))
+  const mine = household || !allocation ? null : (allocation.people[scope] ?? null)
+  const own = household || !separate ? null : (separate[scope] ?? { federal: 0, ca: 0 })
+  // Joint estimated payments: split equally between separate returns (as the engine does for their SALT deduction),
+  // or in proportion to each person's allocated share of a joint return.
+  const paymentWeight = (id: string, j: Jurisdiction): Cents => (separate ? 1 : (allocation?.people[id]?.total[j] ?? 0))
+  const liability = own
+    ? byJurisdiction(own.federal, own.ca)
+    : mine
+      ? byJurisdiction(mine.total.federal, mine.total.ca)
+      : byJurisdiction(householdLiability.federal, householdLiability.ca)
   const householdTotal = householdLiability.federal + householdLiability.ca
   const liabilityShare = household ? 1 : householdTotal > 0 ? liability.total / householdTotal : 0
 
@@ -186,7 +205,7 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
     const total = sumBy(taxPayments.filter((p) => p.jurisdiction === j && (!actualOnly || p.status === 'actual')), (p) => p.amount)
     if (household) return total
     const i = ids.indexOf(scope)
-    return i === -1 ? 0 : allocateJointPayments(total, ids, (id) => allocation.people[id]?.total[j] ?? 0)[i]
+    return i === -1 ? 0 : allocateJointPayments(total, ids, (id) => paymentWeight(id, j))[i]
   }
   const scopedActualPayroll = scopedPayroll.filter((r) => r.status === 'actual')
   const jointPayments = byJurisdiction(jointPaid('federal', false), jointPaid('ca', false))
@@ -261,16 +280,20 @@ export function buildOverview(input: OverviewInput, scope: Scope): OverviewModel
 
   return {
     scope,
+    filing: separate ? 'separate' : 'joint',
     liabilityShare,
-    allocation: mine
-      ? {
-          method: allocation.method,
-          baseline: byJurisdiction(mine.baseline.federal, mine.baseline.ca),
-          investment: byJurisdiction(mine.investment.federal, mine.investment.ca),
-          jointPayments,
-          ...(allocation.note ? { note: allocation.note } : {}),
-        }
-      : null,
+    allocation:
+      mine && allocation
+        ? {
+            method: allocation.method,
+            baseline: byJurisdiction(mine.baseline.federal, mine.baseline.ca),
+            investment: byJurisdiction(mine.investment.federal, mine.investment.ca),
+            jointPayments,
+            ...(mine.separateReturn ? { separateReturn: byJurisdiction(mine.separateReturn.federal, mine.separateReturn.ca) } : {}),
+            ...(allocation.note ? { note: allocation.note } : {}),
+          }
+        : null,
+    jointPayments,
     liability,
     liabilityStatus: combinedStatus(input.liabilities.map((l) => l.status)) === 'actual' ? 'actual' : 'manual_estimate',
     payments,

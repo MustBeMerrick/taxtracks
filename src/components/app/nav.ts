@@ -1,5 +1,6 @@
 import {
   Calculator,
+  ChartColumnStacked,
   Sigma,
   ChartLine,
   LayoutDashboard,
@@ -26,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/income', label: 'Income & Investments', shortLabel: 'Income', title: 'Income & Investments', icon: ChartLine, primaryOnMobile: true },
   { path: '/payroll', label: 'Paystubs', shortLabel: 'Paystubs', title: 'Paystubs', icon: ReceiptText, primaryOnMobile: true },
   { path: '/tax-engine', label: 'Tax Engine', shortLabel: 'Engine', title: 'Tax Engine', icon: Sigma, primaryOnMobile: true },
+  { path: '/visualization', label: 'Visualization', shortLabel: 'Visualize', title: 'Visualization', icon: ChartColumnStacked, primaryOnMobile: false },
   { path: '/calculators', label: 'Calculators', shortLabel: 'Calculators', title: 'Withholding Calculators', icon: Calculator, primaryOnMobile: false },
   { path: '/settings', label: 'Settings & Tax Data', shortLabel: 'Settings', title: 'Settings & Tax Data', icon: Settings, primaryOnMobile: false, footer: true },
 ]

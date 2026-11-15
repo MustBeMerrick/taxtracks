@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allocateHouseholdLiability,
   allocateJointPayments,
+  asIfSeparate,
   roundToTotal,
   splitByWeights,
   type AllocationRecords,
@@ -9,7 +10,7 @@ import {
 } from './liability-allocation'
 import { cents } from './money'
 import { buildOverview, type OverviewInput } from './overview'
-import { estimateHouseholdTax } from './tax-liability'
+import { estimateHouseholdTax, estimateSeparateReturns } from './tax-liability'
 import type { Deduction, InvestmentSourceSummary, PayrollRecord, TaxPayment } from './types'
 
 const meta = { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }
@@ -210,6 +211,43 @@ describe('income proportional', () => {
   })
 })
 
+describe('as if separate', () => {
+  const separateTax = (r: AllocationRecords) => {
+    const s = estimateSeparateReturns(2026, r)!
+    return (id: string) => ({ federal: s.people[id].estimate.federal.total, ca: s.people[id].estimate.california.total })
+  }
+
+  it('is each person’s own separate-return tax when joint and separate totals match (both in the 24% band)', () => {
+    const r = records({ payroll: [...paychecks('marc', 180_000), ...paychecks('mae', 150_000)], investments: [] })
+    const a = allocate(r).as_if_separate
+    expectReconciles(a, r)
+    for (const id of ['marc', 'mae'])
+      for (const j of ['federal', 'ca'] as const) {
+        expect(a.people[id].separateReturn![j]).toBe(separateTax(r)(id)[j])
+        // Separate-return brackets are half the joint ones; per-slice rounding can differ by a few cents.
+        expect(Math.abs(a.people[id].total[j] - separateTax(r)(id)[j])).toBeLessThanOrEqual(5)
+      }
+  })
+
+  it('shares the joint saving in proportion when filing jointly is cheaper (Marc crosses into 32% on his own)', () => {
+    const r = records()
+    const a = allocate(r).as_if_separate
+    expectReconciles(a, r)
+    const own = { marc: separateTax(r)('marc').federal, mae: separateTax(r)('mae').federal }
+    expect(a.household.federal).toBeLessThan(own.marc + own.mae)
+    expect(a.people.marc.total.federal).toBeLessThan(own.marc)
+    expect(a.people.mae.total.federal).toBeLessThan(own.mae)
+    expect(a.people.mae.total.federal / a.household.federal).toBeCloseTo(own.mae / (own.marc + own.mae), 4)
+  })
+
+  it('falls back to income proportional, and says so, without separate-return figures', () => {
+    const a = asIfSeparate({ federal: cents(1_000), ca: cents(500) }, ['marc', 'mae'], null, { marc: 3, mae: 1 })
+    expect(a.method).toBe('as_if_separate')
+    expect(a.people.marc.total).toEqual({ federal: cents(750), ca: cents(375) })
+    expect(a.note).toMatch(/split by income/)
+  })
+})
+
 describe('Overview with an allocation', () => {
   const r = records({
     taxPayments: [{ ...meta, id: 'p', taxYear: 2026, jurisdiction: 'federal', date: '2026-06-15', amount: cents(2_000), kind: 'estimated', status: 'actual' } satisfies TaxPayment],
@@ -235,12 +273,14 @@ describe('Overview with an allocation', () => {
   it('leaves the household view identical whichever method is chosen', () => {
     const a = buildOverview({ ...input, allocation: allocations.income_proportional }, 'household')
     const b = buildOverview({ ...input, allocation: allocations.source_attributed }, 'household')
+    const c = buildOverview({ ...input, allocation: allocations.as_if_separate }, 'household')
     const none = buildOverview(input, 'household')
     expect(b).toEqual(a)
+    expect(c).toEqual(a)
     expect(none).toEqual(a)
   })
 
-  it.each(['income_proportional', 'source_attributed'] as const)('%s: people add up to the household in liability, payments and balance', (method) => {
+  it.each(['income_proportional', 'source_attributed', 'as_if_separate'] as const)('%s: people add up to the household in liability, payments and balance', (method) => {
     const h = buildOverview({ ...input, allocation: allocations[method] }, 'household')
     const marc = buildOverview({ ...input, allocation: allocations[method] }, 'marc')
     const mae = buildOverview({ ...input, allocation: allocations[method] }, 'mae')

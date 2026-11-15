@@ -16,7 +16,9 @@ export function getDb(): DatabaseSync {
 }
 
 export function getRepository(): TaxDataRepository {
-  if (!globalForDb.taxtracksRepo) {
+  // The connection survives dev hot reloads; the repository doesn't. After an edit to it (or anything it imports),
+  // the class is new, so an instance cached from before would keep running the old code.
+  if (!(globalForDb.taxtracksRepo instanceof TaxDataRepository)) {
     const repository = new TaxDataRepository(getDb())
     // First run on an empty database loads the demo household.
     repository.ensureSeeded()

@@ -1,7 +1,7 @@
 import type { FilingStatus } from './filing-status'
 import { payrollAnnuals } from './income-summary'
 import type { Cents } from './money'
-import { estimateHouseholdTax } from './tax-liability'
+import { estimateHouseholdTax, estimateSeparateReturns } from './tax-liability'
 import type { Carryover, Deduction, InvestmentSourceSummary, PayrollRecord, TaxPayment } from './types'
 
 /*
@@ -17,18 +17,33 @@ import type { Carryover, Deduction, InvestmentSourceSummary, PayrollRecord, TaxP
  *    increase is a Shapley value: each owner's marginal effect averaged over every order of adding owners, so
  *    interactions (brackets, NIIT, loss netting, SALT phaseout) are shared symmetrically and the parts add up
  *    exactly to the joint tax. Joint items (carryovers, household deductions, tax payments) stay in every scenario.
+ *  - As if separate: each jurisdiction's joint tax split in proportion to what each spouse would owe on their own
+ *    married-filing-separately return (estimateSeparateReturns). When joint and separate totals match, each share
+ *    is exactly their separate-return tax; when filing jointly saves money, the saving is shared in that proportion.
  *
  * Every split is rounded with largest remainders so people add up to the household to the cent.
  */
 
-export type AllocationMethod = 'income_proportional' | 'source_attributed'
+export type AllocationMethod = 'income_proportional' | 'source_attributed' | 'as_if_separate'
 
-export const ALLOCATION_METHODS: { value: AllocationMethod; label: string; description: string }[] = [
-  { value: 'income_proportional', label: 'Income proportional', description: 'All joint tax split by each person’s share of total income.' },
+export const ALLOCATION_METHODS: { value: AllocationMethod; label: string; shortLabel: string; description: string }[] = [
+  {
+    value: 'income_proportional',
+    label: 'Income proportional',
+    shortLabel: 'By income',
+    description: 'All joint tax split by each person’s share of total income.',
+  },
   {
     value: 'source_attributed',
     label: 'Source attributed',
+    shortLabel: 'By source',
     description: 'Baseline tax split by W-2 wages; the extra tax from each person’s own investments goes to that person.',
+  },
+  {
+    value: 'as_if_separate',
+    label: 'As if separate',
+    shortLabel: 'As if separate',
+    description: 'Joint tax split by what each person would owe on their own married-filing-separately return.',
   },
 ]
 
@@ -47,6 +62,8 @@ export interface PersonAllocation {
   /** Extra tax caused by the person's own investments and deductions (zero under income proportional). */
   investment: Pair
   total: Pair
+  /** As if separate: the tax on their own separate return, before scaling to the joint total. */
+  separateReturn?: Pair
 }
 
 export interface LiabilityAllocation {
@@ -182,7 +199,7 @@ export function personalIncome(id: string, records: Pick<AllocationRecords, 'pay
 }
 
 /** Taxable wages per jurisdiction (federal Box 1; California also taxes HSA contributions). */
-function taxableWages(id: string, payroll: PayrollRecord[]): Pair {
+export function taxableWages(id: string, payroll: PayrollRecord[]): Pair {
   const p = payrollAnnuals(payroll.filter((r) => r.taxpayerId === id))
   return {
     federal: p.salary - p.hsa - p.section125 - p.retirement401k + p.gtli,
@@ -191,14 +208,42 @@ function taxableWages(id: string, payroll: PayrollRecord[]): Pair {
 }
 
 /**
- * Both allocations of the household's estimated liability, from the year's records. Null when the engine has no
- * tables for the year or filing status. Pure: every scenario filters copies; nothing stored is touched.
+ * As if separate: each jurisdiction's joint tax split by each person's separate-return tax there. With no separate
+ * figures (no tables for the year), falls back to income proportional.
+ */
+export function asIfSeparate(
+  household: Pair,
+  ids: string[],
+  separate: Record<string, Pair> | null,
+  income: Record<string, number>,
+): LiabilityAllocation {
+  if (!separate) {
+    const fallback = incomeProportional(household, ids, income)
+    return { ...fallback, method: 'as_if_separate', note: 'Separate-return tables aren’t available for this year, so the tax is split by income.' }
+  }
+  const fed = splitByWeights(household.federal, ids.map((id) => separate[id]?.federal ?? 0))
+  const ca = splitByWeights(household.ca, ids.map((id) => separate[id]?.ca ?? 0))
+  const people: Record<string, PersonAllocation> = {}
+  ids.forEach((id, i) => {
+    const total = pairOf(fed[i], ca[i])
+    people[id] = { baseline: total, investment: pairOf(0, 0), total, separateReturn: separate[id] ?? pairOf(0, 0) }
+  })
+  const none = (j: keyof Pair) => ids.every((id) => (separate[id]?.[j] ?? 0) <= 0)
+  const note = none('federal') || none('ca') ? 'No one owes tax on a separate return, so the tax is split equally.' : undefined
+  return { method: 'as_if_separate', household, people, ...(note ? { note } : {}) }
+}
+
+/**
+ * Every allocation of the household's estimated liability, from the year's records. Null when the engine has no
+ * tables for the year or filing status, and under married filing separately, where each spouse has their own
+ * return and there is nothing to split. Pure: every scenario filters copies; nothing stored is touched.
  */
 export function allocateHouseholdLiability(
   taxYear: number,
   filingStatus: FilingStatus,
   records: AllocationRecords,
 ): Record<AllocationMethod, LiabilityAllocation> | null {
+  if (filingStatus === 'mfs') return null
   const ids = records.taxpayerIds
   const isPerson = (owner: string | undefined) => owner !== undefined && ids.includes(owner)
   const estimate = (owners: string[]): Pair | null => {
@@ -215,9 +260,14 @@ export function allocateHouseholdLiability(
   const players = ids.filter((id) => records.investments.some((i) => i.owner === id) || records.deductions.some((d) => d.owner === id))
   const income = Object.fromEntries(ids.map((id) => [id, personalIncome(id, records)]))
   const wages = Object.fromEntries(ids.map((id) => [id, taxableWages(id, records.payroll)]))
+  const separate = estimateSeparateReturns(taxYear, records)
+  const separateTax = separate
+    ? Object.fromEntries(ids.map((id) => [id, pairOf(separate.people[id].estimate.federal.total, separate.people[id].estimate.california.total)]))
+    : null
   return {
     income_proportional: incomeProportional(full, ids, income),
     source_attributed: sourceAttributed(ids, players, (owners) => estimate(owners)!, wages),
+    as_if_separate: asIfSeparate(full, ids, separateTax, income),
   }
 }
 

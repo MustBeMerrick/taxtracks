@@ -1,0 +1,84 @@
+.tt-viz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* Filters sit in one row above the chart and wrap on narrow screens. */
+.tt-viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.tt-viz-controls .tt-segmented button {
+  min-height: 30px;
+  font-size: 13px;
+}
+
+/* The chart and the per-person summary sit side by side: a narrow, tall chart, and the summary hugging its table. */
+.tt-viz-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) minmax(0, max-content);
+  justify-content: start;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.tt-viz-main,
+.tt-viz-side {
+  min-width: 0;
+}
+
+/* Text wraps to the summary table's width rather than widening the column. */
+.tt-viz-side p {
+  width: 0;
+  min-width: 100%;
+}
+
+/* Narrower than this, the chart needs the full width: stack them. */
+@media (max-width: 899px) {
+  .tt-viz-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tt-viz-caption {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.tt-viz-plot {
+  min-width: 0;
+  height: 600px;
+}
+
+/* Legend keys for the hatched fills and the dashed bracket edge (same textures as the chart). */
+.tt-viz-key--investments,
+.tt-viz-key--ltcg {
+  border: 1px solid var(--text-muted);
+  background: repeating-linear-gradient(var(--tt-viz-angle), var(--text-muted) 0 2px, transparent 2px 5px);
+}
+
+.tt-viz-key--investments {
+  --tt-viz-angle: 45deg;
+}
+
+.tt-viz-key--ltcg {
+  --tt-viz-angle: 135deg;
+}
+
+.tt-viz-key--line {
+  width: 16px;
+  height: 0;
+  border-top: 2px dashed var(--text-muted);
+  border-radius: 0;
+}
+
+/* Phones: a shorter plot so the summary below stays in reach. */
+@media (max-width: 899px) {
+  .tt-viz-plot {
+    height: 480px;
+  }
+}

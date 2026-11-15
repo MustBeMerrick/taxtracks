@@ -17,6 +17,7 @@ import {
 } from '@/lib/core/income-summary'
 import { centsToInput } from '@/lib/core/investments'
 import { formatMoney } from '@/lib/core/money'
+import { estimateSeparateReturns } from '@/lib/core/tax-liability'
 import type { Carryover, Deduction, InvestmentSourceSummary, PayrollRecord, TaxPayment, Taxpayer } from '@/lib/core/types'
 import { formatDollars, parseMoney } from '@/lib/core/withholding/form'
 import { useScheduleRefresh } from '@/lib/refresh-context'
@@ -64,7 +65,7 @@ const ROWS: Row[] = [
   {
     key: 'federalDeduction',
     label: 'Fed deduction used',
-    tip: 'The larger of itemized and standard. Taking the standard deduction adds up to $1,000 of cash charity ($2,000 joint).',
+    tip: 'The larger of itemized and standard; filing separately, both spouses itemize or both take the standard. Taking the standard deduction adds up to $1,000 of cash charity ($2,000 joint).',
   },
   {
     key: 'federalOrdinaryTaxable',
@@ -82,14 +83,14 @@ const ROWS: Row[] = [
     label: 'State itemized deductions',
     tip: 'Property tax + mortgage interest + charity. California doesn’t deduct its own income tax or SDI.',
   },
-  { key: 'stateDeduction', label: 'State deduction used', tip: 'The larger of itemized and standard.' },
+  { key: 'stateDeduction', label: 'State deduction used', tip: 'The larger of itemized and standard; filing separately, both spouses itemize or both take the standard.' },
   {
     key: 'stateTaxable',
     label: 'State taxable income',
     tip: 'State AGI − deduction used.',
   },
   { key: 'capitalLossCarryForward', label: 'Capital loss carry-forward', tip: 'Net capital loss beyond the annual limit, carried into next year.' },
-  { key: 'carriedOver', label: 'Capital loss carried over', tip: 'Prior-year capital losses applied this year (household column only).' },
+  { key: 'carriedOver', label: 'Capital loss carried over', tip: 'Prior-year capital losses applied this year (household column only; split equally on separate returns).' },
 ]
 
 export function IncomeCalculations({ year, taxpayers, investments, paystubs, carryovers, deductions, taxPayments, filingStatus }: Props) {
@@ -110,13 +111,27 @@ export function IncomeCalculations({ year, taxpayers, investments, paystubs, car
     carryoverLong: household ? carryoverLong : 0,
   })
 
-  const columns = [
-    // One person on their own: the single-filer view of their share.
-    ...taxpayers.map((t) => ({ key: t.id, label: t.name, summary: calculateIncomeSummary(year, inputFor([t.id], 'single', false)) })),
-    ...(taxpayers.length > 1
-      ? [{ key: 'household', label: taxpayers.map((t) => t.name).join(' + '), summary: calculateIncomeSummary(year, inputFor(taxpayers.map((t) => t.id), filingStatus, true)) }]
-      : []),
-  ]
+  // Filing separately: each spouse's actual return, and no combined column (there is no combined return).
+  const separate =
+    filingStatus === 'mfs'
+      ? estimateSeparateReturns(year, { taxpayerIds: taxpayers.map((t) => t.id), payroll: paystubs, investments, carryovers, deductions, taxPayments })
+      : null
+  const columns =
+    filingStatus === 'mfs'
+      ? taxpayers.map((t) => ({ key: t.id, label: t.name, summary: separate?.people[t.id]?.summary ?? null }))
+      : [
+          // One person on their own: the single-filer view of their share.
+          ...taxpayers.map((t) => ({ key: t.id, label: t.name, summary: calculateIncomeSummary(year, inputFor([t.id], 'single', false)) })),
+          ...(taxpayers.length > 1
+            ? [
+                {
+                  key: 'household',
+                  label: taxpayers.map((t) => t.name).join(' + '),
+                  summary: calculateIncomeSummary(year, inputFor(taxpayers.map((t) => t.id), filingStatus, true)),
+                },
+              ]
+            : []),
+        ]
 
   if (columns.every((c) => c.summary === null)) {
     return (
@@ -129,8 +144,19 @@ export function IncomeCalculations({ year, taxpayers, investments, paystubs, car
   return (
     <Card title="Calculations">
       <p className="tt-stubs-lead">
-        Built from your paystubs and the brokerage boxes on Income & Investments. Person columns are each person filing alone; the last column uses{' '}
-        {FILING_STATUS_LABELS[filingStatus]}, the carried-over losses and the household deductions below. Taxable income is before tax brackets.
+        Built from your paystubs and the brokerage boxes on Income & Investments.{' '}
+        {filingStatus === 'mfs' ? (
+          <>
+            Each column is that spouse’s {FILING_STATUS_LABELS.mfs} return: their own wages, brokerage accounts and deductions, with the carried-over
+            losses and household deductions below split equally. Both itemize or both take the standard deduction.
+          </>
+        ) : (
+          <>
+            Person columns are each person filing alone; the last column uses {FILING_STATUS_LABELS[filingStatus]}, the carried-over losses and the
+            household deductions below.
+          </>
+        )}{' '}
+        Taxable income is before tax brackets.
       </p>
       <div className="tt-income-calc-scroll">
         <div className="tt-income-calc-frame">

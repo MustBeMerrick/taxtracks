@@ -2,6 +2,7 @@
 
 import { CircleAlert, CircleCheck, CreditCard, Landmark } from 'lucide-react'
 import { InfoTip, ProvenanceBadge } from '@/components/ui/Card'
+import { ALLOCATION_METHODS } from '@/lib/core/liability-allocation'
 import { formatMoney, formatPercent, ratio, type Cents } from '@/lib/core/money'
 import type { ByJurisdiction, OverviewModel } from '@/lib/core/overview'
 
@@ -44,8 +45,11 @@ export function Kpis({ model }: { model: OverviewModel }) {
         {model.allocation && (
           <p className="tt-kpi-note">
             {formatPercent(model.liabilityShare)} share of the joint estimate ·{' '}
-            {model.allocation.method === 'source_attributed' ? 'by source' : 'by income'}
+            {ALLOCATION_METHODS.find((m) => m.value === model.allocation?.method)?.shortLabel.toLowerCase()}
           </p>
+        )}
+        {model.filing === 'separate' && (
+          <p className="tt-kpi-note">{model.scope === 'household' ? 'Both separate returns added together' : 'Their own separate return'}</p>
         )}
         <ProvenanceBadge status={model.liabilityStatus} />
         <SplitRows values={liability} />

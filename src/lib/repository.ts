@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { allocateHouseholdLiability, type AllocationMethod, type LiabilityAllocation } from '@/lib/core/liability-allocation'
-import { estimatedLiabilities, estimateHouseholdTax } from '@/lib/core/tax-liability'
+import { estimatedLiabilities, householdLiability, type HouseholdRecords } from '@/lib/core/tax-liability'
 import { DATA_TABLES, SCHEMA_VERSION, sqlTable, transaction, type DataTable } from '@/lib/db'
 import type {
   ActivityItem,
@@ -64,6 +64,8 @@ export interface YearData {
   liabilities: LiabilityEstimate[]
   activity: ActivityItem[]
   taxPayments: TaxPayment[]
+  /** Married filing separately: each spouse's own liability (the household rows are their sum). */
+  separateReturns?: Record<string, { federal: number; ca: number }>
 }
 
 export interface ExportFile {
@@ -118,47 +120,44 @@ export class TaxDataRepository {
     return (this.db.prepare(`SELECT COUNT(*) AS n FROM ${sqlTable(table)}`).get() as { n: number }).n
   }
 
-  yearData(year: number): YearData {
-    const taxpayers = this.all('taxpayers')
-    const payroll = this.all('payroll', year).sort((a, b) => a.payDate.localeCompare(b.payDate))
-    const investments = this.all('investmentSummaries', year)
-    // Liability comes from the tax engine (stamped with a fixed date so input hashes stay reproducible) whenever the year and filing status have verified tables;
-    // otherwise whatever was stored (hand-entered placeholders) is used.
-    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
-    const computed = filingStatus
-      ? estimateHouseholdTax(year, filingStatus, {
-          taxpayerIds: taxpayers.map((t) => t.id),
-          payroll,
-          investments,
-          carryovers: this.all('carryovers', year),
-          deductions: this.all('deductions', year),
-          taxPayments: this.all('taxPayments'),
-        })
-      : null
+  /** Everything the tax engine reads for a year. */
+  engineRecords(year: number): HouseholdRecords {
     return {
-      year,
-      taxpayers,
-      payroll,
-      investments,
-      otherIncome: this.all('otherIncome', year),
-      liabilities: computed ? estimatedLiabilities(year, computed.estimate, `${year}-01-01T00:00:00.000Z`) : this.all('liabilities', year),
-      activity: this.all('activity'),
-      taxPayments: this.all('taxPayments', year),
-    }
-  }
-
-  /** Both splits of the year's joint liability between the spouses. Null when the engine has no tables for it. */
-  liabilityAllocations(year: number): Record<AllocationMethod, LiabilityAllocation> | null {
-    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
-    if (!filingStatus) return null
-    return allocateHouseholdLiability(year, filingStatus, {
       taxpayerIds: this.all('taxpayers').map((t) => t.id),
       payroll: this.all('payroll', year),
       investments: this.all('investmentSummaries', year),
       carryovers: this.all('carryovers', year),
       deductions: this.all('deductions', year),
       taxPayments: this.all('taxPayments'),
-    })
+    }
+  }
+
+  yearData(year: number): YearData {
+    const taxpayers = this.all('taxpayers')
+    const payroll = this.all('payroll', year).sort((a, b) => a.payDate.localeCompare(b.payDate))
+    const investments = this.all('investmentSummaries', year)
+    // Liability comes from the tax engine (stamped with a fixed date so input hashes stay reproducible) whenever the year and filing status have verified tables;
+    // otherwise whatever was stored (hand-entered placeholders) is used. Filing separately, it is the two returns added together.
+    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
+    const computed = filingStatus ? householdLiability(year, filingStatus, this.engineRecords(year)) : null
+    return {
+      year,
+      taxpayers,
+      payroll,
+      investments,
+      otherIncome: this.all('otherIncome', year),
+      liabilities: computed ? estimatedLiabilities(year, computed, `${year}-01-01T00:00:00.000Z`) : this.all('liabilities', year),
+      activity: this.all('activity'),
+      taxPayments: this.all('taxPayments', year),
+      ...(computed?.people ? { separateReturns: computed.people } : {}),
+    }
+  }
+
+  /** Both splits of the year's joint liability between the spouses. Null when the engine has no tables for it or the couple files separately. */
+  liabilityAllocations(year: number): Record<AllocationMethod, LiabilityAllocation> | null {
+    const filingStatus = this.taxYears().find((t) => t.year === year)?.filingStatus
+    if (!filingStatus) return null
+    return allocateHouseholdLiability(year, filingStatus, this.engineRecords(year))
   }
 
   taxYears(): TaxYear[] {
