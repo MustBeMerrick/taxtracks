@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { allocateHouseholdLiability } from './liability-allocation'
 import { cents } from './money'
-import { estimateHouseholdTax, estimateSeparateReturns, type HouseholdRecords } from './tax-liability'
-import type { InvestmentSourceSummary, PayrollRecord } from './types'
-import { buildVisualization, type BracketBar, type BracketView } from './visualization'
+import { buildOverview, type OverviewInput } from './overview'
+import { estimatedLiabilities, estimateHouseholdTax, estimateSeparateReturns, householdLiability, type HouseholdRecords } from './tax-liability'
+import type { InvestmentSourceSummary, PayrollRecord, Taxpayer } from './types'
+import { buildVisualization, effectiveRates, type BracketBar, type BracketView } from './visualization'
 
 const meta = { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', status: 'projected' as const }
 
@@ -139,5 +141,35 @@ describe('separate pictures', () => {
     expect(v.filing).toBe('joint')
     expect(v.method).toBe('as_if_separate')
     expect(v.bars).toEqual(viz.separate!.federal.bars)
+  })
+})
+
+describe('effective rates', () => {
+  const taxpayers: Taxpayer[] = people.map((p) => ({ ...meta, householdId: 'household', ...p }))
+  const joint = householdLiability(2026, 'mfj', records)!
+  const own = householdLiability(2026, 'mfs', records)!
+  const base = { taxpayers, payroll: records.payroll, investments: records.investments, otherIncome: [], activity: [] }
+  const mfjYear: OverviewInput = { ...base, liabilities: estimatedLiabilities(2026, joint, '2026-01-01T00:00:00.000Z') }
+  const mfsYear: OverviewInput = { ...base, liabilities: estimatedLiabilities(2026, own, '2026-01-01T00:00:00.000Z'), separateReturns: own.people }
+  const splits = allocateHouseholdLiability(2026, 'mfj', records)!
+  const rates = effectiveRates(mfjYear, splits, own.people!)
+
+  it('are each person’s Overview rates under the same split', () => {
+    for (const method of ['income_proportional', 'source_attributed', 'as_if_separate'] as const) {
+      for (const id of ['marc', 'mae']) {
+        const r = buildOverview({ ...mfjYear, allocation: splits[method] }, id).effectiveRates
+        expect(rates.joint![method][id]).toEqual({ federal: r.federal, ca: r.ca })
+      }
+    }
+  })
+
+  it('filing separately: their own return over their own income', () => {
+    const income = buildOverview(mfjYear, 'mae').income.total
+    expect(rates.separate!.mae.federal).toBeCloseTo(own.people!.mae.federal / income, 10)
+    expect(rates.separate!.mae.ca).toBeCloseTo(own.people!.mae.ca / income, 10)
+  })
+
+  it('previews a joint return’s splits from a separately filed year too', () => {
+    expect(effectiveRates(mfsYear, splits, own.people!)).toEqual(rates)
   })
 })

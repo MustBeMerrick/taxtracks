@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/controls'
 import { ALLOCATION_METHODS, type AllocationMethod } from '@/lib/core/liability-allocation'
 import { formatMoney, formatPercent } from '@/lib/core/money'
-import type { BracketView, VisualizationData, VizFiling, VizJurisdiction } from '@/lib/core/visualization'
+import type { BracketView, EffectiveRates, VisualizationData, VizFiling, VizJurisdiction } from '@/lib/core/visualization'
 import { BracketChart, colorFor } from '@/components/visualization/BracketChart'
 import '@/components/overview/overview.css'
 import '@/components/visualization/visualization.css'
@@ -25,10 +25,12 @@ function caption(view: BracketView, names: string): string {
 
 export function VisualizationView({
   data,
+  rates,
   initialFiling,
   initialMethod,
 }: {
   data: VisualizationData
+  rates: EffectiveRates
   initialFiling: VizFiling
   initialMethod: AllocationMethod
 }) {
@@ -52,6 +54,7 @@ export function VisualizationView({
   }
 
   const people = data.people
+  const personRates = filing === 'separate' ? rates.separate : rates.joint?.[method]
   const names = people.map((p) => p.name).join(' and ')
 
   return (
@@ -104,6 +107,7 @@ export function VisualizationView({
                   <th scope="col">Taxable income</th>
                   <th scope="col">Bracket tax</th>
                   <th scope="col">Average rate</th>
+                  <th scope="col">Effective rate</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,6 +120,7 @@ export function VisualizationView({
                       <td>{formatMoney(income, { precision: 'whole' })}</td>
                       <td>{formatMoney(tax, { precision: 'whole' })}</td>
                       <td>{income > 0 ? formatPercent(tax / income) : '—'}</td>
+                      <td>{personRates?.[p.id] ? formatPercent(personRates[p.id][jurisdiction]) : '—'}</td>
                     </tr>
                   )
                 })}
@@ -123,8 +128,9 @@ export function VisualizationView({
             </table>
           </div>
           <p className="tt-chart-caption">
-            Tax from the brackets{jurisdiction === 'federal' ? ' and capital gains rates' : ''} only. The Overview’s shares also count the 3.8% investment income tax,
-            Additional Medicare and credits, so they differ a little.
+            Average rate: the bracket tax{jurisdiction === 'federal' ? ' (with capital gains rates)' : ''} over taxable income. Effective rate: their whole share
+            of the liability, including{jurisdiction === 'federal' ? ' the 3.8% investment income tax, Additional Medicare and' : ''} credits, over total income before
+            deductions, as on the Overview.
           </p>
         </Card>
       </div>

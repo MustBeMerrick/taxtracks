@@ -1,7 +1,8 @@
 import { getIncomeRules } from './income-rules'
 import type { IncomeSummary } from './income-summary'
-import { personalIncome, taxableWages, type AllocationMethod } from './liability-allocation'
+import { personalIncome, taxableWages, type AllocationMethod, type LiabilityAllocation } from './liability-allocation'
 import { applyRate, cents, type Cents } from './money'
+import { buildOverview, type OverviewInput } from './overview'
 import { estimateHouseholdTax, estimateSeparateReturns, type HouseholdRecords } from './tax-liability'
 
 /*
@@ -265,4 +266,40 @@ export function buildVisualization(taxYear: number, people: { id: string; name: 
   const fed = jointView('federal')
   const ca = jointView('ca')
   return { taxYear, people, joint: fed && ca ? { federal: fed, ca } : null, separate }
+}
+
+/** Each person's effective rate per jurisdiction: their liability over their total income, exactly as the Overview shows it. */
+export type PersonRates = Record<string, { federal: number; ca: number }>
+
+export interface EffectiveRates {
+  joint: Record<AllocationMethod, PersonRates> | null
+  separate: PersonRates | null
+}
+
+/**
+ * Effective rates for every picture the page can show: each split of a joint return, and separate returns. Built from
+ * the Overview's own model, so a person's rate here is the one their Overview shows under the same settings.
+ */
+export function effectiveRates(
+  input: OverviewInput,
+  joint: Record<AllocationMethod, LiabilityAllocation> | null,
+  separate: Record<string, { federal: Cents; ca: Cents }> | null,
+): EffectiveRates {
+  const ids = input.taxpayers.map((t) => t.id)
+  const ratesFor = (patch: Pick<OverviewInput, 'allocation' | 'separateReturns'>): PersonRates =>
+    Object.fromEntries(
+      ids.map((id) => {
+        const { federal, ca } = buildOverview({ ...input, ...patch }, id).effectiveRates
+        return [id, { federal, ca }]
+      }),
+    )
+  return {
+    joint: joint
+      ? (Object.fromEntries(Object.entries(joint).map(([method, allocation]) => [method, ratesFor({ allocation, separateReturns: undefined })])) as Record<
+          AllocationMethod,
+          PersonRates
+        >)
+      : null,
+    separate: separate ? ratesFor({ allocation: undefined, separateReturns: separate }) : null,
+  }
 }
