@@ -50,8 +50,21 @@
 }
 
 .tt-viz-plot {
+  position: relative;
   min-width: 0;
   height: 600px;
+}
+
+.tt-viz-plot svg {
+  display: block;
+  overflow: visible;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-viz-tooltip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* Legend keys for the hatched fills and the dashed bracket edge (same textures as the chart). */
