@@ -5,7 +5,7 @@ import { setAllocationMethod } from '@/app/actions'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/controls'
 import { ALLOCATION_METHODS, type AllocationMethod } from '@/lib/core/liability-allocation'
-import { formatMoney, formatPercent } from '@/lib/core/money'
+import { formatMoney, formatPercent, type Cents } from '@/lib/core/money'
 import type { BracketView, EffectiveRates, VisualizationData, VizFiling, VizJurisdiction } from '@/lib/core/visualization'
 import { BracketChart, colorFor } from '@/components/visualization/BracketChart'
 import '@/components/overview/overview.css'
@@ -98,41 +98,44 @@ export function VisualizationView({
           </p>
         </Card>
 
-        <Card className="tt-viz-side" title="Bracket tax in this picture">
-          <div className="tt-table-scroll">
-            <table className="tt-table tt-table--compact">
-              <thead>
-                <tr>
-                  <th scope="col" />
-                  <th scope="col">Taxable income</th>
-                  <th scope="col">Bracket tax</th>
-                  <th scope="col">Average rate</th>
-                  <th scope="col">Effective rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {people.map((p) => {
-                  const income = view.bars.flatMap((b) => b.segments).filter((s) => s.person === p.id).reduce((t, s) => t + s.to - s.from, 0)
-                  const tax = view.taxByPerson[p.id] ?? 0
-                  return (
-                    <tr key={p.id}>
-                      <th scope="row">{p.name}</th>
-                      <td>{formatMoney(income, { precision: 'whole' })}</td>
-                      <td>{formatMoney(tax, { precision: 'whole' })}</td>
-                      <td>{income > 0 ? formatPercent(tax / income) : '—'}</td>
-                      <td>{personRates?.[p.id] ? formatPercent(personRates[p.id][jurisdiction]) : '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="tt-chart-caption">
-            Average rate: the bracket tax{jurisdiction === 'federal' ? ' (with capital gains rates)' : ''} over taxable income. Effective rate: their whole share
-            of the liability, including{jurisdiction === 'federal' ? ' the 3.8% investment income tax, Additional Medicare and' : ''} credits, over total income before
-            deductions, as on the Overview.
-          </p>
-        </Card>
+        <div className="tt-viz-side">
+          <SplitBasisCard view={view} people={people} income={data.income} />
+          <Card title="Bracket tax in this picture">
+            <div className="tt-table-scroll">
+              <table className="tt-table tt-table--compact">
+                <thead>
+                  <tr>
+                    <th scope="col" />
+                    <th scope="col">Taxable income</th>
+                    <th scope="col">Bracket tax</th>
+                    <th scope="col">Average rate</th>
+                    <th scope="col">Effective rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {people.map((p) => {
+                    const income = view.bars.flatMap((b) => b.segments).filter((s) => s.person === p.id).reduce((t, s) => t + s.to - s.from, 0)
+                    const tax = view.taxByPerson[p.id] ?? 0
+                    return (
+                      <tr key={p.id}>
+                        <th scope="row">{p.name}</th>
+                        <td>{formatMoney(income, { precision: 'whole' })}</td>
+                        <td>{formatMoney(tax, { precision: 'whole' })}</td>
+                        <td>{income > 0 ? formatPercent(tax / income) : '—'}</td>
+                        <td>{personRates?.[p.id] ? formatPercent(personRates[p.id][jurisdiction]) : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="tt-chart-caption">
+              Average rate: the bracket tax{jurisdiction === 'federal' ? ' (with capital gains rates)' : ''} over taxable income. Effective rate: their whole
+              share of the liability, including{jurisdiction === 'federal' ? ' the 3.8% investment income tax, Additional Medicare and' : ''} credits, over total
+              income before deductions, as on the Overview.
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   )
@@ -161,5 +164,66 @@ function Legend({ view, people }: { view: BracketView; people: { id: string; nam
         <i className="tt-key tt-viz-key--line" /> Bracket edge
       </span>
     </div>
+  )
+}
+
+function basisNote(view: BracketView): string {
+  if (!view.basis.split) return 'Filing separately, nothing is divided: each return is taxed on its own income.'
+  switch (view.method) {
+    case 'income_proportional':
+      return 'Each bracket slice of the joint return is split by these shares.'
+    case 'source_attributed':
+      return 'Each wage slice of the joint return is split by these shares. Brokerage income sits on top and is its owner’s alone.'
+    default:
+      return `The joint ${view.jurisdiction === 'federal' ? 'federal' : 'California'} bill is split in proportion to the tax each would owe on their own return.`
+  }
+}
+
+/** Each person's total income and what the current picture divides by, with the shares it gives. */
+function SplitBasisCard({ view, people, income }: { view: BracketView; people: { id: string; name: string }[]; income: Record<string, Cents> }) {
+  const basis = view.basis
+  const measure = basis.amounts ?? income
+  const weights = people.map((p) => Math.max(0, measure[p.id] ?? 0))
+  const total = weights.reduce((t, w) => t + w, 0)
+  const shares = weights.map((w) => (total > 0 ? w / total : 1 / people.length))
+  const whole = (c: Cents | undefined) => formatMoney(c ?? 0, { precision: 'whole' })
+  const row = (label: string, cell: (id: string, i: number) => string) => (
+    <tr>
+      <th scope="row">{label}</th>
+      {people.map((p, i) => (
+        <td key={p.id}>{cell(p.id, i)}</td>
+      ))}
+    </tr>
+  )
+
+  return (
+    <Card title="Income and shares">
+      {basis.split && (
+        <div className="tt-viz-share" role="img" aria-label={people.map((p, i) => `${p.name} ${formatPercent(shares[i])}`).join(', ')}>
+          {people.map((p, i) => (shares[i] > 0 ? <span key={p.id} style={{ flexGrow: shares[i], background: colorFor(i) }} /> : null))}
+        </div>
+      )}
+      <div className="tt-table-scroll">
+        <table className="tt-table tt-table--compact">
+          <thead>
+            <tr>
+              <th scope="col" />
+              {people.map((p, i) => (
+                <th key={p.id} scope="col">
+                  <i className="tt-key" style={{ background: colorFor(i) }} /> {p.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {row('Total income', (id) => whole(income[id]))}
+            {basis.amounts && row(basis.label, (id) => whole(basis.amounts?.[id]))}
+            {basis.split && row(basis.amounts ? 'Share' : 'Share of income', (_, i) => formatPercent(shares[i]))}
+            {basis.owned && row('Own brokerage income', (id) => whole(basis.owned?.[id]))}
+          </tbody>
+        </table>
+      </div>
+      <p className="tt-chart-caption">{basisNote(view)}</p>
+    </Card>
   )
 }

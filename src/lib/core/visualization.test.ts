@@ -173,3 +173,20 @@ describe('effective rates', () => {
     expect(effectiveRates(mfsYear, splits, own.people!)).toEqual(rates)
   })
 })
+
+describe('split basis', () => {
+  it('names what each picture divides by', () => {
+    const fed = viz.joint!.federal
+    expect(viz.income).toEqual({ marc: cents(207_000 + 2_800 + 3_500 + 4_500), mae: cents(169_000) })
+    expect(fed.income_proportional.basis).toEqual({ label: 'Income', amounts: null, split: true })
+    expect(fed.source_attributed.basis.amounts).toEqual({ marc: cents(207_000), mae: cents(169_000) })
+    expect(fed.source_attributed.basis.owned).toEqual({ marc: cents(2_800 + 3_500 + 4_500), mae: 0 })
+    expect(fed.as_if_separate.basis.amounts).toEqual({ marc: separate.people.marc.estimate.federal.total, mae: separate.people.mae.estimate.federal.total })
+  })
+
+  it('filing separately: each return’s own taxable income, nothing divided', () => {
+    const b = viz.separate!.federal.basis
+    expect(b.split).toBe(false)
+    expect(b.amounts!.mae).toBe(viz.separate!.federal.bars.find((x) => x.key === 'mae')!.total)
+  })
+})

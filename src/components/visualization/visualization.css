@@ -17,6 +17,20 @@
   font-size: 13px;
 }
 
+/* The proportion the current picture splits by, as one 100% bar. */
+.tt-viz-share {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin-bottom: var(--space-3);
+}
+
+.tt-viz-share span {
+  flex-basis: 0;
+  min-width: 2px;
+  border-radius: 4px;
+}
+
 /* The chart and the per-person summary sit side by side: a narrow, tall chart, and the summary hugging its table. */
 .tt-viz-grid {
   display: grid;
@@ -29,6 +43,13 @@
 .tt-viz-main,
 .tt-viz-side {
   min-width: 0;
+}
+
+/* The side column: incomes and shares, then the bracket tax. */
+.tt-viz-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 /* Text wraps to the summary table's width rather than widening the column. */

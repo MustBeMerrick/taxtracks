@@ -47,6 +47,18 @@ export interface BracketLine {
   rate: number
 }
 
+/** What a picture divides between the spouses, shown above the chart. */
+export interface SplitBasis {
+  /** What each person's share is measured by, e.g. "Taxable wages". */
+  label: string
+  /** Each person's measure; null when it's their total income (shown already). */
+  amounts: Record<string, Cents> | null
+  /** False filing separately: nothing is divided, each return stands alone. */
+  split: boolean
+  /** By source: each person's own brokerage income, which sits on top of the wages as theirs. */
+  owned?: Record<string, Cents>
+}
+
 export interface BracketView {
   jurisdiction: VizJurisdiction
   filing: VizFiling
@@ -56,11 +68,14 @@ export interface BracketView {
   bars: BracketBar[]
   /** Bracket tax (and capital gains tax) per person in this picture. */
   taxByPerson: Record<string, Cents>
+  basis: SplitBasis
 }
 
 export interface VisualizationData {
   taxYear: number
   people: { id: string; name: string }[]
+  /** Each person's total income: W-2 wages (after pre-tax deductions) plus their brokerage results. */
+  income: Record<string, Cents>
   joint: Record<VizJurisdiction, Record<AllocationMethod, BracketView>> | null
   separate: Record<VizJurisdiction, BracketView> | null
 }
@@ -195,7 +210,23 @@ function separateView(
     const gains = jurisdiction === 'federal' ? gainsSegments(`${p.id}-lt`, parts.taxable, [p.id], [parts.ltcg], r.estimate.federal.capitalGainsTax) : []
     return barOf(p.id, p.name, [...segments, ...gains])
   })
-  return { jurisdiction, filing: method ? 'joint' : 'separate', method, lines: linesOf(bands), bars, taxByPerson: taxBy(bars.flatMap((b) => b.segments), ids) }
+  const own = (pick: (id: string) => Cents) => Object.fromEntries(ids.map((id) => [id, pick(id)]))
+  const estimate = (id: string) => returns.people[id].estimate
+  const basis: SplitBasis = method
+    ? {
+        label: 'Tax on own return',
+        amounts: own((id) => (jurisdiction === 'federal' ? estimate(id).federal.total : estimate(id).california.total)),
+        split: true,
+      }
+    : {
+        label: 'Taxable income',
+        amounts: own((id) => {
+          const parts = taxableParts(returns.people[id].summary, jurisdiction)
+          return parts.taxable + parts.ltcg
+        }),
+        split: false,
+      }
+  return { jurisdiction, filing: method ? 'joint' : 'separate', method, lines: linesOf(bands), bars, taxByPerson: taxBy(bars.flatMap((b) => b.segments), ids), basis }
 }
 
 /** Every picture the page can show for a year. Null parts where the year has no tables. */
@@ -248,24 +279,32 @@ export function buildVisualization(taxYear: number, people: { id: string; name: 
       ...(jurisdiction === 'federal' ? gainsSegments('src-lt', parts.taxable, ids, splitSlice(parts.ltcg, ids, owned((i) => i.longTerm)), gainsTax) : []),
     ]
 
-    const view = (method: AllocationMethod, segments: Segment[]): BracketView => ({
+    const view = (method: AllocationMethod, segments: Segment[], basis: SplitBasis): BracketView => ({
       jurisdiction,
       filing: 'joint',
       method,
       lines,
       bars: [barOf('household', label, segments)],
       taxByPerson: taxBy(segments, ids),
+      basis,
     })
+    const byId = (values: Cents[]) => Object.fromEntries(ids.map((id, i) => [id, values[i]]))
     return {
-      income_proportional: view('income_proportional', byIncome),
-      source_attributed: view('source_attributed', bySource),
+      income_proportional: view('income_proportional', byIncome, { label: 'Income', amounts: null, split: true }),
+      source_attributed: view('source_attributed', bySource, {
+        label: 'Taxable wages',
+        amounts: byId(wages),
+        split: true,
+        owned: byId(ids.map((id) => recs.investments.filter((i) => i.owner === id).reduce((t, i) => t + i.shortTerm + i.longTerm + i.dividendsInterest, 0))),
+      }),
       as_if_separate: separateView(taxYear, jurisdiction, people, separateReturns, 'as_if_separate')!,
     }
   }
 
   const fed = jointView('federal')
   const ca = jointView('ca')
-  return { taxYear, people, joint: fed && ca ? { federal: fed, ca } : null, separate }
+  const income = Object.fromEntries(ids.map((id) => [id, personalIncome(id, recs)]))
+  return { taxYear, people, income, joint: fed && ca ? { federal: fed, ca } : null, separate }
 }
 
 /** Each person's effective rate per jurisdiction: their liability over their total income, exactly as the Overview shows it. */
